@@ -62,12 +62,10 @@ GyeolheePinball.sln
 
 ## Release Files
 
-GitHub에는 현재 빌드 `007`을 위의 한글 파일명으로만 공개합니다. 추후 업데이트할 때는 루트 실행 파일 두 개와 아래 SHA-256 값을 새 빌드로 교체합니다.
-
-| File | Source build | SHA256 |
+| File | Version | SHA256 |
 |---|---|---|
-| `결희 종겜핀볼.exe` | `GyeolheePinball-007.exe` | `D6B0BFCC339F95968F429324CE40695265FEB0BE7BCF4F93D29F3B4147B5BDBE` |
-| `결희 종겜핀볼(자동).exe` | `GyeolheePinballAuto-007.exe` | `9A8CE1CDCC0C6C2FF970AEA50B5295DB3F109B18E4F6C67C4E5D3895B191AA02` |
+| `결희 종겜핀볼.exe` | `1.0.0.0` | `D6B0BFCC339F95968F429324CE40695265FEB0BE7BCF4F93D29F3B4147B5BDBE` |
+| `결희 종겜핀볼(자동).exe` | `1.0.0.0` | `0C243064B678C480FBBD41969A82563B1879756ABEF67F53BFCF11B5ABC65E9B` |
 
 ## Version Info
 

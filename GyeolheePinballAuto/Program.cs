@@ -32,7 +32,7 @@ namespace GyeolheePinballAuto
                 Application.ThreadException += delegate(object sender, System.Threading.ThreadExceptionEventArgs e)
                 {
                     WriteCrashLog(e.Exception);
-                    MessageBox.Show(e.Exception.Message, "결희 종겜핀볼(자동) 실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(e.Exception.Message, "결희 종겜핀볼 실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 };
                 AppDomain.CurrentDomain.UnhandledException += delegate(object sender, UnhandledExceptionEventArgs e)
                 {
@@ -43,7 +43,7 @@ namespace GyeolheePinballAuto
             catch (Exception ex)
             {
                 WriteCrashLog(ex);
-                MessageBox.Show(ex.Message, "결희 종겜핀볼(자동) 실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message, "결희 종겜핀볼 실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -204,7 +204,7 @@ namespace GyeolheePinballAuto
 
         public MainForm()
         {
-            Text = "결희 종겜핀볼(자동)";
+            Text = "결희 종겜핀볼";
             ClientSize = new Size(1093, 688);
             MinimumSize = new Size(720, 680);
             StartPosition = FormStartPosition.CenterScreen;
@@ -322,7 +322,7 @@ namespace GyeolheePinballAuto
             _logo.BorderColor = Color.Transparent;
             _surface.Controls.Add(_logo);
 
-            _appTitle = PlainLabel("결희 종겜핀볼(자동)", 17.0f, FontStyle.Bold, _text);
+            _appTitle = PlainLabel("결희 종겜핀볼", 17.0f, FontStyle.Bold, _text);
             _appTitle.ForeColor = Color.FromArgb(73, 53, 111);
             _appTitle.TextAlign = ContentAlignment.MiddleLeft;
             _surface.Controls.Add(_appTitle);
