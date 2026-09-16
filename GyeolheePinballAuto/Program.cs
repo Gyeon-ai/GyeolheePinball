@@ -601,7 +601,7 @@ namespace GyeolheePinballAuto
             _entryList = new VerticalScrollPanel();
             _entryList.Visible = false;
             _entryList.BackColor = _card;
-            _entryList.Resize += delegate { LayoutEntryRows(); };
+            _entryList.Resize += delegate { RenderEntryRows(); };
             _entryList.ScrollOffsetChanged += delegate { PositionEntryRows(); };
             _entryList.MouseDown += delegate { ClearEditingFocus(); };
             _collectionCard.Controls.Add(_entryList);
@@ -1029,7 +1029,10 @@ namespace GyeolheePinballAuto
                 return;
             }
 
-            const int rowPoolCapacity = 9;
+            int visibleRowCapacity = Math.Max(
+                1,
+                (_entryList.ClientSize.Height + EntryRowControl.RowHeight - 1) / EntryRowControl.RowHeight);
+            int rowPoolCapacity = visibleRowCapacity + 1;
             int requiredRows = Math.Min(_visibleEntries.Count, rowPoolCapacity);
 
             _entryList.SuspendLayout();

@@ -22,6 +22,7 @@
 - 정확히 N개 또는 N개 이상 수집 조건 선택
 - 닉네임 또는 채팅 내용 기준 핀볼 목록 생성
 - 수집 목록 검색, 복사, 저장
+- 창 높이에 맞춰 표시 행 수가 자동으로 늘고 줄어드는 반응형 목록
 - [결희 종겜핀볼](https://gyeon-ai.github.io/GyeolheePinball-Web/) 사이트 열기
 - 자동 버전의 Chrome 우선 핀볼 사이트 입력 반영
 - 결희 라벤더·스카이 블루 UI와 고해상도 아이콘
@@ -65,8 +66,8 @@ GyeolheePinball.sln
 
 | File | Version | SHA256 |
 |---|---|---|
-| `결희 종겜핀볼.exe` | `1.0.0.0` | `A66CDBE3D6414FE18C98098EB0B45D4A3CC38F247E7ABEDB78ED21AFD8D32CE6` |
-| `결희 종겜핀볼(자동).exe` | `1.0.0.0` | `9FCD60B06F550123F3CCC9DF16C450C183DCC1BD3E2E02B31648FDF5A9239920` |
+| `결희 종겜핀볼.exe` | `1.0.0.0` | `68E61ED1F472A4F4D3724ADBF1E01B7599AF85DE9E77F9C1B4AFB87C5F0C2ED0` |
+| `결희 종겜핀볼(자동).exe` | `1.0.0.0` | `9FC48BBB13D4640235FB974BCAC731A8B9BFF0B20973A8372B66632C9F149FA1` |
 
 ## Version Info
 
