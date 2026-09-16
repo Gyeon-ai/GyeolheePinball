@@ -601,7 +601,7 @@ namespace GyeolheePinballAuto
             _entryList = new VerticalScrollPanel();
             _entryList.Visible = false;
             _entryList.BackColor = _card;
-            _entryList.Resize += delegate { RenderEntryRows(); };
+            _entryList.Resize += delegate { GrowEntryRowPoolForViewport(); };
             _entryList.ScrollOffsetChanged += delegate { PositionEntryRows(); };
             _entryList.MouseDown += delegate { ClearEditingFocus(); };
             _collectionCard.Controls.Add(_entryList);
@@ -1022,6 +1022,70 @@ namespace GyeolheePinballAuto
             _emptyText.SetBounds(centerX - (textW / 2), startY + 130, textW, 48);
         }
 
+        private int GetRequiredEntryRowCount()
+        {
+            if (_entryList == null)
+            {
+                return 0;
+            }
+
+            int visibleRowCapacity = Math.Max(
+                1,
+                (_entryList.ClientSize.Height + EntryRowControl.RowHeight - 1) / EntryRowControl.RowHeight);
+            return Math.Min(_visibleEntries.Count, visibleRowCapacity + 1);
+        }
+
+        private void GrowEntryRowPoolForViewport()
+        {
+            if (_entryList == null)
+            {
+                return;
+            }
+
+            int requiredRows = GetRequiredEntryRowCount();
+            if (_entryList.Controls.Count >= requiredRows)
+            {
+                return;
+            }
+
+            _entryList.SuspendLayout();
+            while (_entryList.Controls.Count < requiredRows)
+            {
+                AddEntryRowControl();
+            }
+            _entryList.ResumeLayout(false);
+            LayoutEntryRows();
+        }
+
+        private void AddEntryRowControl()
+        {
+            int index = _entryList.Controls.Count;
+            EntryRowControl row = new EntryRowControl(
+                _visibleEntries[index],
+                index + 1,
+                _text,
+                _muted,
+                _purple,
+                _lavender,
+                _line,
+                _card);
+            row.EntryChanged += delegate { RefreshPinballText(false); };
+            row.BlankClicked += delegate { ClearEditingFocus(); };
+            AttachEntryScrollWheel(row);
+            EntryRowControl rowForEvent = row;
+            row.DeleteClicked += delegate
+            {
+                int entryIndex = _entries.IndexOf(rowForEvent.Entry);
+                if (entryIndex >= 0)
+                {
+                    _entries.RemoveAt(entryIndex);
+                    RefreshPinballText(false);
+                    RefreshCounts();
+                }
+            };
+            _entryList.Controls.Add(row);
+        }
+
         private void RenderEntryRows()
         {
             if (_entryList == null)
@@ -1029,11 +1093,7 @@ namespace GyeolheePinballAuto
                 return;
             }
 
-            int visibleRowCapacity = Math.Max(
-                1,
-                (_entryList.ClientSize.Height + EntryRowControl.RowHeight - 1) / EntryRowControl.RowHeight);
-            int rowPoolCapacity = visibleRowCapacity + 1;
-            int requiredRows = Math.Min(_visibleEntries.Count, rowPoolCapacity);
+            int requiredRows = GetRequiredEntryRowCount();
 
             _entryList.SuspendLayout();
             while (_entryList.Controls.Count > requiredRows)
@@ -1045,31 +1105,7 @@ namespace GyeolheePinballAuto
 
             while (_entryList.Controls.Count < requiredRows)
             {
-                int index = _entryList.Controls.Count;
-                EntryRowControl row = new EntryRowControl(
-                    _visibleEntries[index],
-                    index + 1,
-                    _text,
-                    _muted,
-                    _purple,
-                    _lavender,
-                    _line,
-                    _card);
-                row.EntryChanged += delegate { RefreshPinballText(false); };
-                row.BlankClicked += delegate { ClearEditingFocus(); };
-                AttachEntryScrollWheel(row);
-                EntryRowControl rowForEvent = row;
-                row.DeleteClicked += delegate
-                {
-                    int entryIndex = _entries.IndexOf(rowForEvent.Entry);
-                    if (entryIndex >= 0)
-                    {
-                        _entries.RemoveAt(entryIndex);
-                        RefreshPinballText(false);
-                        RefreshCounts();
-                    }
-                };
-                _entryList.Controls.Add(row);
+                AddEntryRowControl();
             }
 
             foreach (Control control in _entryList.Controls)
