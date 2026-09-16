@@ -7,7 +7,6 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Net;
-using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -1506,6 +1505,19 @@ namespace GyeolheePinball
                 return;
             }
 
+            if (_nicknamePinballMode)
+            {
+                var entry = new CollectedEntry();
+                entry.Source = source;
+                entry.Nickname = nickname;
+                entry.BalloonCount = count;
+                entry.CoinCount = CalculateCoins(count);
+                entry.PinballName = nickname;
+                entry.ReceivedAt = DateTime.Now.ToString("HH:mm:ss");
+                AddCollectedEntry(entry);
+                return;
+            }
+
             var gift = new PendingGift();
             gift.Source = source;
             gift.Nickname = nickname;
@@ -1550,7 +1562,8 @@ namespace GyeolheePinball
             entry.Nickname = matched.Nickname;
             entry.BalloonCount = matched.BalloonCount;
             entry.CoinCount = matched.CoinCount;
-            entry.PinballName = _nicknamePinballMode ? matched.Nickname : message;
+            // 대기 목록에는 채팅 내용 모드에서 받은 후원만 들어온다.
+            entry.PinballName = message;
             entry.ReceivedAt = DateTime.Now.ToString("HH:mm:ss");
             AddCollectedEntry(entry);
         }
@@ -2544,299 +2557,6 @@ namespace GyeolheePinball
         public string AcceptLanguage;
         public string ServiceLanguage;
     }
-
-#if AUTO_PINBALL
-    internal static class PinballSiteInjector
-    {
-        private static readonly JavaScriptSerializer Serializer = new JavaScriptSerializer();
-
-        public static async Task<bool> OpenAndInjectAsync(string url, string names)
-        {
-            foreach (string browserPath in FindPreferredBrowserCandidates())
-            {
-                if (await TryOpenAndInjectAsync(browserPath, url, names))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public static bool OpenInPreferredBrowser(string url)
-        {
-            foreach (string browserPath in FindPreferredBrowserCandidates())
-            {
-                try
-                {
-                    Process.Start(new ProcessStartInfo(browserPath, "--new-window \"" + url + "\"") { UseShellExecute = false });
-                    return true;
-                }
-                catch
-                {
-                }
-            }
-
-            try
-            {
-                Process.Start(url);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static async Task<bool> TryOpenAndInjectAsync(string browserPath, string url, string names)
-        {
-            int port = ReserveLoopbackPort();
-            string profileDir = Path.Combine(Path.GetTempPath(), "GyeolheePinballBrowser-" + port.ToString());
-            Directory.CreateDirectory(profileDir);
-
-            string args = "--remote-debugging-port=" + port.ToString() +
-                          " --user-data-dir=\"" + profileDir + "\"" +
-                          " --no-first-run --no-default-browser-check --new-window \"" + url + "\"";
-            try
-            {
-                Process.Start(new ProcessStartInfo(browserPath, args) { UseShellExecute = false });
-            }
-            catch
-            {
-                return false;
-            }
-
-            string wsUrl = await WaitForWebSocketDebuggerUrlAsync(port);
-            if (wsUrl.Length == 0)
-            {
-                return false;
-            }
-
-            string script = BuildInjectionScript(names);
-            for (int attempt = 0; attempt < 18; attempt++)
-            {
-                if (await EvaluateBooleanAsync(wsUrl, script))
-                {
-                    return true;
-                }
-
-                await Task.Delay(250);
-            }
-
-            return false;
-        }
-
-        private static IEnumerable<string> FindPreferredBrowserCandidates()
-        {
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            bool foundChrome = false;
-            foreach (string candidate in ExistingBrowserCandidates(GetChromeCandidates(), seen))
-            {
-                foundChrome = true;
-                yield return candidate;
-            }
-
-            if (foundChrome)
-            {
-                yield break;
-            }
-
-            foreach (string candidate in ExistingBrowserCandidates(GetEdgeCandidates(), seen))
-            {
-                yield return candidate;
-            }
-        }
-
-        private static IEnumerable<string> GetChromeCandidates()
-        {
-            yield return Path.Combine(GetProgramFiles64Path(), "Google\\Chrome\\Application\\chrome.exe");
-            yield return Path.Combine(GetProgramFilesPath(), "Google\\Chrome\\Application\\chrome.exe");
-            yield return "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-            yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Google\\Chrome\\Application\\chrome.exe");
-            yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Google\\Chrome\\Application\\chrome.exe");
-            yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google\\Chrome\\Application\\chrome.exe");
-        }
-
-        private static IEnumerable<string> GetEdgeCandidates()
-        {
-            yield return Path.Combine(GetProgramFiles64Path(), "Microsoft\\Edge\\Application\\msedge.exe");
-            yield return Path.Combine(GetProgramFilesPath(), "Microsoft\\Edge\\Application\\msedge.exe");
-            yield return "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe";
-            yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Microsoft\\Edge\\Application\\msedge.exe");
-            yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft\\Edge\\Application\\msedge.exe");
-            yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft\\Edge\\Application\\msedge.exe");
-        }
-
-        private static string GetProgramFiles64Path()
-        {
-            string path = Environment.GetEnvironmentVariable("ProgramW6432");
-            if (!String.IsNullOrWhiteSpace(path))
-            {
-                return path;
-            }
-
-            return "C:\\Program Files";
-        }
-
-        private static string GetProgramFilesPath()
-        {
-            string path = Environment.GetEnvironmentVariable("ProgramFiles");
-            if (!String.IsNullOrWhiteSpace(path))
-            {
-                return path;
-            }
-
-            return Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-        }
-
-        private static IEnumerable<string> ExistingBrowserCandidates(IEnumerable<string> candidates, HashSet<string> seen)
-        {
-            foreach (string candidate in candidates)
-            {
-                if (File.Exists(candidate) && seen.Add(candidate))
-                {
-                    yield return candidate;
-                }
-            }
-        }
-
-        private static int ReserveLoopbackPort()
-        {
-            var listener = new TcpListener(IPAddress.Loopback, 0);
-            listener.Start();
-            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
-            listener.Stop();
-            return port;
-        }
-
-        private static async Task<string> WaitForWebSocketDebuggerUrlAsync(int port)
-        {
-            string endpoint = "http://127.0.0.1:" + port.ToString() + "/json/list";
-            using (var client = new WebClient())
-            {
-                client.Encoding = Encoding.UTF8;
-                for (int attempt = 0; attempt < 32; attempt++)
-                {
-                    try
-                    {
-                        string json = await client.DownloadStringTaskAsync(new Uri(endpoint));
-                        string wsUrl = ExtractWebSocketDebuggerUrl(json);
-                        if (wsUrl.Length > 0)
-                        {
-                            return wsUrl;
-                        }
-                    }
-                    catch
-                    {
-                    }
-
-                    await Task.Delay(250);
-                }
-            }
-
-            return "";
-        }
-
-        private static string ExtractWebSocketDebuggerUrl(string json)
-        {
-            object parsed = Serializer.DeserializeObject(json);
-            object[] tabs = parsed as object[];
-            if (tabs == null)
-            {
-                return "";
-            }
-
-            string fallback = "";
-            foreach (object tab in tabs)
-            {
-                var item = tab as Dictionary<string, object>;
-                if (item == null || !item.ContainsKey("webSocketDebuggerUrl"))
-                {
-                    continue;
-                }
-
-                string wsUrl = Convert.ToString(item["webSocketDebuggerUrl"]);
-                string tabUrl = item.ContainsKey("url") ? Convert.ToString(item["url"]) : "";
-                if (fallback.Length == 0)
-                {
-                    fallback = wsUrl;
-                }
-
-                if (tabUrl.IndexOf("gyeon-ai.github.io/GyeolheePinball-Web", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    return wsUrl;
-                }
-            }
-
-            return fallback;
-        }
-
-        private static async Task<bool> EvaluateBooleanAsync(string wsUrl, string script)
-        {
-            using (var socket = new ClientWebSocket())
-            using (var cts = new CancellationTokenSource(5000))
-            {
-                await socket.ConnectAsync(new Uri(wsUrl), cts.Token);
-                var payload = new Dictionary<string, object>();
-                payload["id"] = 1;
-                payload["method"] = "Runtime.evaluate";
-                payload["params"] = new Dictionary<string, object>
-                {
-                    { "expression", script },
-                    { "returnByValue", true }
-                };
-
-                byte[] bytes = Encoding.UTF8.GetBytes(Serializer.Serialize(payload));
-                await socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, cts.Token);
-
-                string response = await ReceiveTextAsync(socket, cts.Token);
-                return ResponseIsTrue(response);
-            }
-        }
-
-        private static async Task<string> ReceiveTextAsync(ClientWebSocket socket, CancellationToken token)
-        {
-            byte[] buffer = new byte[8192];
-            using (var stream = new MemoryStream())
-            {
-                WebSocketReceiveResult result;
-                do
-                {
-                    result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), token);
-                    if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        break;
-                    }
-
-                    stream.Write(buffer, 0, result.Count);
-                }
-                while (!result.EndOfMessage);
-
-                return Encoding.UTF8.GetString(stream.ToArray());
-            }
-        }
-
-        private static bool ResponseIsTrue(string response)
-        {
-            return response.IndexOf("\"value\":true", StringComparison.OrdinalIgnoreCase) >= 0;
-        }
-
-        private static string BuildInjectionScript(string names)
-        {
-            string jsonValue = Serializer.Serialize(names);
-            return "(function(){var value=" + jsonValue + ";" +
-                   "function setValue(el,val){var proto=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;" +
-                   "var desc=Object.getOwnPropertyDescriptor(proto,'value');if(desc&&desc.set){desc.set.call(el,val);}else{el.value=val;}" +
-                   "el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}" +
-                   "var controls=Array.prototype.slice.call(document.querySelectorAll('textarea,input'));" +
-                   "controls=controls.filter(function(el){var type=(el.type||'').toLowerCase();return ['button','submit','range','checkbox','radio','hidden'].indexOf(type)<0;});" +
-                   "var target=controls.filter(function(el){return String(el.value||'').indexOf('*')>=0;})[0];" +
-                   "if(!target){controls.sort(function(a,b){return (b.clientWidth*b.clientHeight)-(a.clientWidth*a.clientHeight);});target=controls[0];}" +
-                   "if(!target){return false;}setValue(target,value);target.focus();return target.value===value;})()";
-        }
-    }
-
-#endif
 
     internal sealed class SoopLiveChatClient : IDisposable
     {

@@ -14,7 +14,8 @@
 ## Features
 
 - SOOP 라이브 채팅 연결
-- 기준 별풍선 이상 후원자의 다음 채팅 1회 수집
+- 닉네임 모드에서는 기준을 충족한 후원을 즉시 수집
+- 채팅 내용 모드에서는 기준을 충족한 후원자의 다음 채팅 1회 수집
 - 도전미션 후원 패킷(`CHALLENGE_GIFT`) 수집 지원
 - 애드벌룬 후원 패킷(`serviceCommand == 87`) 수집 지원
 - 별풍선, 애드벌룬, 도전미션 수집 대상 선택
@@ -64,8 +65,8 @@ GyeolheePinball.sln
 
 | File | Version | SHA256 |
 |---|---|---|
-| `결희 종겜핀볼.exe` | `1.0.0.0` | `D6B0BFCC339F95968F429324CE40695265FEB0BE7BCF4F93D29F3B4147B5BDBE` |
-| `결희 종겜핀볼(자동).exe` | `1.0.0.0` | `0C243064B678C480FBBD41969A82563B1879756ABEF67F53BFCF11B5ABC65E9B` |
+| `결희 종겜핀볼.exe` | `1.0.0.0` | `A66CDBE3D6414FE18C98098EB0B45D4A3CC38F247E7ABEDB78ED21AFD8D32CE6` |
+| `결희 종겜핀볼(자동).exe` | `1.0.0.0` | `9FCD60B06F550123F3CCC9DF16C450C183DCC1BD3E2E02B31648FDF5A9239920` |
 
 ## Version Info
 
@@ -75,4 +76,4 @@ GyeolheePinball.sln
 
 ## Security Note
 
-`GyeolheePinballAuto`는 Chrome DevTools WebSocket을 사용해 핀볼 사이트 입력칸에 목록을 자동 반영합니다. 이 동작은 일부 보안 엔진이나 VirusTotal ML 판정에서 민감하게 보일 수 있습니다.
+일반판에는 브라우저 원격 제어 코드가 포함되지 않습니다. `GyeolheePinballAuto`만 Chrome DevTools WebSocket을 사용해 핀볼 사이트 입력칸에 목록을 자동 반영하며, 이 동작은 일부 보안 엔진이나 ML 판정에서 민감하게 보일 수 있습니다.

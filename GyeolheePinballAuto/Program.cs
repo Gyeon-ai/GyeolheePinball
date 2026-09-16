@@ -1523,6 +1523,19 @@ namespace GyeolheePinballAuto
                 return;
             }
 
+            if (_nicknamePinballMode)
+            {
+                var entry = new CollectedEntry();
+                entry.Source = source;
+                entry.Nickname = nickname;
+                entry.BalloonCount = count;
+                entry.CoinCount = CalculateCoins(count);
+                entry.PinballName = nickname;
+                entry.ReceivedAt = DateTime.Now.ToString("HH:mm:ss");
+                AddCollectedEntry(entry);
+                return;
+            }
+
             var gift = new PendingGift();
             gift.Source = source;
             gift.Nickname = nickname;
@@ -1567,7 +1580,8 @@ namespace GyeolheePinballAuto
             entry.Nickname = matched.Nickname;
             entry.BalloonCount = matched.BalloonCount;
             entry.CoinCount = matched.CoinCount;
-            entry.PinballName = _nicknamePinballMode ? matched.Nickname : message;
+            // 대기 목록에는 채팅 내용 모드에서 받은 후원만 들어온다.
+            entry.PinballName = message;
             entry.ReceivedAt = DateTime.Now.ToString("HH:mm:ss");
             AddCollectedEntry(entry);
         }
