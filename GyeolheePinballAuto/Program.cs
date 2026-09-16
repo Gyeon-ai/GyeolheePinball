@@ -3902,7 +3902,7 @@ namespace GyeolheePinballAuto
             _metaLabel.BackColor = _card;
             _metaLabel.ForeColor = Color.FromArgb(96, 80, 127);
             _metaLabel.Font = UiFont.Make(8.5f, FontStyle.Regular);
-            _metaLabel.TextAlign = ContentAlignment.MiddleCenter;
+            _metaLabel.TextAlign = ContentAlignment.MiddleLeft;
             _metaLabel.Text = _entry.Nickname + " · " + GiftSourceInfo.GetLabel(_entry.Source) + " " + _entry.BalloonCount + "개";
             Controls.Add(_metaLabel);
             _metaLabel.Visible = false;
@@ -4155,9 +4155,9 @@ namespace GyeolheePinballAuto
             int coinW = _entry.CoinCount >= 1000 ? 80 : (_entry.CoinCount >= 100 ? 74 : 68);
             int coinX = Width - deleteW - coinW - 10;
             bool showMeta = Width >= 470;
-            int metaW = showMeta ? Math.Min(190, Math.Max(146, Width / 4)) : 0;
+            int metaW = showMeta ? Math.Min(220, Math.Max(160, Width / 5)) : 0;
             int metaX = coinX - metaW - 8;
-            int editW = Math.Min(500, Math.Max(150, metaX - editX - 10));
+            int editW = Math.Max(150, metaX - editX - 10);
             if (!showMeta)
             {
                 editW = Math.Max(110, coinX - editX - 10);
@@ -4274,7 +4274,7 @@ namespace GyeolheePinballAuto
                     _metaLabel.Font,
                     _metaLabel.Bounds,
                     _metaLabel.ForeColor,
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding);
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding);
             }
 
             if (_showCoin)
