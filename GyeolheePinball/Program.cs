@@ -163,6 +163,7 @@ namespace GyeolheePinball
         private Label _emptyText;
         private VerticalScrollPanel _entryList;
         private readonly List<CollectedEntry> _visibleEntries = new List<CollectedEntry>();
+        private string _visibleEntriesSearchText = "";
         private bool _layingOutEntryRows;
         private bool _scrollEntryListToBottomAfterRender;
 
@@ -176,6 +177,10 @@ namespace GyeolheePinball
         private RoundButton _openPinballButton;
         private RoundButton _copyButton;
         private RoundButton _saveButton;
+        private readonly StringBuilder _generatedPinballText = new StringBuilder();
+        private long _generatedPinballCoinTotal;
+        private bool _pinballTextMatchesGenerated = true;
+        private bool _updatingPinballText;
 
         private Label _footerLeft;
         private CreditBadge _footerRight;
@@ -624,7 +629,14 @@ namespace GyeolheePinball
             _pinballText = new RoundTextBox();
             _pinballText.Multiline = true;
             _pinballText.Placeholder = "수집된 내용이 이곳에 표시됩니다";
-            _pinballText.InnerTextChanged += delegate { RefreshPinballTotalLabel(); };
+            _pinballText.InnerTextChanged += delegate
+            {
+                if (!_updatingPinballText)
+                {
+                    _pinballTextMatchesGenerated = false;
+                }
+                RefreshPinballTotalLabel();
+            };
             _pinballCard.Controls.Add(_pinballText);
 
             _openPinballButton = GradientButton("핀볼 사이트 열기  ↗");
@@ -658,12 +670,20 @@ namespace GyeolheePinball
             };
             _nicknameSourceButton.Click += delegate
             {
+                if (!_nicknamePinballMode)
+                {
+                    _pending.Clear();
+                }
                 _nicknamePinballMode = true;
                 RefreshSourceButtons();
                 ShowToast("닉네임을 핀볼에 반영합니다.");
             };
             _contentSourceButton.Click += delegate
             {
+                if (_nicknamePinballMode)
+                {
+                    _pending.Clear();
+                }
                 _nicknamePinballMode = false;
                 RefreshSourceButtons();
                 ShowToast("채팅 내용을 핀볼에 반영합니다.");
@@ -1336,7 +1356,12 @@ namespace GyeolheePinball
             _reconnectTimer.Stop();
             _connectTimer.Stop();
             CloseChatClient();
-            _streamerId = ExtractStreamerId(raw);
+            string nextStreamerId = ExtractStreamerId(raw);
+            if (!String.Equals(_streamerId, nextStreamerId, StringComparison.OrdinalIgnoreCase))
+            {
+                _pending.Clear();
+            }
+            _streamerId = nextStreamerId;
             _streamerName = ResolveDisplayName(_streamerId);
                 RefreshStatus("● " + _streamerName + " 방송 확인 중", _amber, Color.FromArgb(255, 246, 239));
             ShowToast(_streamerName + " 방송 정보를 확인합니다.");
@@ -1616,8 +1641,8 @@ namespace GyeolheePinball
 
             _entries.Add(entry);
             _scrollEntryListToBottomAfterRender = !IsEditingEntryList();
-            RefreshPinballText(_scrollEntryListToBottomAfterRender);
-            RefreshCounts();
+            AppendPinballText(entry, _scrollEntryListToBottomAfterRender);
+            RefreshEntryListAfterAppend(entry);
         }
 
         private bool IsEditingEntryList()
@@ -1695,38 +1720,99 @@ namespace GyeolheePinball
 
         private void RefreshPinballText(bool scrollToBottom)
         {
-            var parts = new List<string>();
+            _generatedPinballText.Clear();
+            _generatedPinballCoinTotal = 0;
             foreach (CollectedEntry entry in _entries)
             {
-                if (entry == null || entry.CoinCount <= 0)
+                string part = BuildPinballEntryText(entry);
+                if (part.Length > 0)
                 {
-                    continue;
-                }
-
-                string name = SanitizePinballName(entry.PinballName);
-                if (name.Length == 0)
-                {
-                    name = SanitizePinballName(entry.Nickname);
-                }
-
-                if (name.Length > 0)
-                {
-                    parts.Add(name + "*" + entry.CoinCount);
+                    if (_generatedPinballText.Length > 0)
+                    {
+                        _generatedPinballText.Append(',');
+                    }
+                    _generatedPinballText.Append(part);
+                    _generatedPinballCoinTotal += entry.CoinCount;
                 }
             }
 
-            string nextText = String.Join(",", parts.ToArray());
-            if (_pinballText.Text != nextText)
+            ApplyGeneratedPinballText(scrollToBottom);
+        }
+
+        private string BuildPinballEntryText(CollectedEntry entry)
+        {
+            if (entry == null || entry.CoinCount <= 0)
             {
-                if (scrollToBottom)
+                return "";
+            }
+
+            string name = SanitizePinballName(entry.PinballName);
+            if (name.Length == 0)
+            {
+                name = SanitizePinballName(entry.Nickname);
+            }
+
+            return name.Length == 0 ? "" : name + "*" + entry.CoinCount;
+        }
+
+        private void AppendPinballText(CollectedEntry entry, bool scrollToBottom)
+        {
+            string part = BuildPinballEntryText(entry);
+            if (part.Length > 0)
+            {
+                string suffix = (_generatedPinballText.Length > 0 ? "," : "") + part;
+                _generatedPinballText.Append(suffix);
+                _generatedPinballCoinTotal += entry.CoinCount;
+
+                if (_pinballTextMatchesGenerated)
                 {
-                    _pinballText.SetTextScrollToBottom(nextText);
-                }
-                else
-                {
-                    _pinballText.SetTextPreserveView(nextText);
+                    _updatingPinballText = true;
+                    try
+                    {
+                        if (scrollToBottom)
+                        {
+                            _pinballText.AppendTextScrollToBottom(suffix);
+                        }
+                        else
+                        {
+                            _pinballText.AppendTextPreserveView(suffix);
+                        }
+                    }
+                    finally
+                    {
+                        _updatingPinballText = false;
+                    }
+                    RefreshPinballTotalLabel();
+                    return;
                 }
             }
+
+            ApplyGeneratedPinballText(scrollToBottom);
+        }
+
+        private void ApplyGeneratedPinballText(bool scrollToBottom)
+        {
+            string nextText = _generatedPinballText.ToString();
+            _updatingPinballText = true;
+            try
+            {
+                if (_pinballText.Text != nextText)
+                {
+                    if (scrollToBottom)
+                    {
+                        _pinballText.SetTextScrollToBottom(nextText);
+                    }
+                    else
+                    {
+                        _pinballText.SetTextPreserveView(nextText);
+                    }
+                }
+            }
+            finally
+            {
+                _updatingPinballText = false;
+            }
+            _pinballTextMatchesGenerated = true;
             RefreshPinballTotalLabel();
         }
 
@@ -1736,6 +1822,52 @@ namespace GyeolheePinball
             RefreshPinballTotalLabel();
 
             bool searchActive = GetSearchText().Length > 0;
+            bool visibilityChanged = RefreshCollectionState(searchActive);
+            RenderEntryRows();
+            if (visibilityChanged && _surface != null && _surface.IsHandleCreated)
+            {
+                LayoutUi();
+            }
+        }
+
+        private void RefreshEntryListAfterAppend(CollectedEntry entry)
+        {
+            string query = GetSearchText();
+            if (!String.Equals(query, _visibleEntriesSearchText, StringComparison.Ordinal))
+            {
+                RefreshCounts();
+                return;
+            }
+
+            bool searchActive = query.Length > 0;
+            bool entryVisible = !searchActive || EntryMatchesSearch(entry, query);
+            if (entryVisible)
+            {
+                _visibleEntries.Add(entry);
+            }
+
+            bool visibilityChanged = RefreshCollectionState(searchActive);
+            if (visibilityChanged && _surface != null && _surface.IsHandleCreated)
+            {
+                LayoutUi();
+            }
+
+            if (!entryVisible)
+            {
+                _scrollEntryListToBottomAfterRender = false;
+                return;
+            }
+
+            int previousRowCount = _entryList.Controls.Count;
+            GrowEntryRowPoolForViewport();
+            if (_entryList.Controls.Count == previousRowCount)
+            {
+                LayoutEntryRows();
+            }
+        }
+
+        private bool RefreshCollectionState(bool searchActive)
+        {
             bool hasVisibleEntries = _visibleEntries.Count > 0;
             bool visibilityChanged = _entryList.Visible != hasVisibleEntries;
             _entryList.Visible = hasVisibleEntries;
@@ -1750,18 +1882,17 @@ namespace GyeolheePinball
             }
             _searchCountLabel.Visible = false;
             RefreshEmptyStateText(searchActive);
-            RenderEntryRows();
-            if (visibilityChanged && _surface != null && _surface.IsHandleCreated)
-            {
-                LayoutUi();
-            }
+            return visibilityChanged;
         }
 
         private void RefreshPinballTotalLabel()
         {
             if (_pinballCountLabel != null)
             {
-                _pinballCountLabel.Text = "총 " + CalculateReflectedCoinTotal().ToString("#,0") + "코인";
+                long total = (_updatingPinballText || _pinballTextMatchesGenerated)
+                    ? _generatedPinballCoinTotal
+                    : CalculateReflectedCoinTotal();
+                _pinballCountLabel.Text = "총 " + total.ToString("#,0") + "코인";
             }
         }
 
@@ -1838,6 +1969,7 @@ namespace GyeolheePinball
         {
             _visibleEntries.Clear();
             string query = GetSearchText();
+            _visibleEntriesSearchText = query;
             foreach (CollectedEntry entry in _entries)
             {
                 if (query.Length == 0 || EntryMatchesSearch(entry, query))
@@ -2345,7 +2477,7 @@ namespace GyeolheePinball
 
         private void ClearEntries()
         {
-            if (_entries.Count == 0)
+            if (_entries.Count == 0 && _pending.Count == 0)
             {
                 return;
             }
@@ -2358,37 +2490,48 @@ namespace GyeolheePinball
                 }
             }
 
-            if (_entries.Count == 0)
+            if (_entries.Count == 0 && _pending.Count == 0)
             {
                 return;
             }
 
             _entries.Clear();
+            _pending.Clear();
             RefreshPinballText();
             RefreshCounts();
         }
 
         private string ExtractStreamerId(string raw)
         {
-            string trimmed = raw.Trim();
-            Uri uri;
-            if (Uri.TryCreate(trimmed, UriKind.Absolute, out uri))
+            string trimmed = (raw ?? "").Trim();
+            if (Regex.IsMatch(trimmed, "^[A-Za-z0-9_\\-]+$"))
             {
-                string[] parts = uri.AbsolutePath.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-                for (int i = 0; i < parts.Length; i++)
-                {
-                    if (!Regex.IsMatch(parts[i], "^\\d+$"))
-                    {
-                        return parts[i];
-                    }
-                }
+                return trimmed;
             }
 
-            trimmed = trimmed.Replace("https://", "").Replace("http://", "");
-            int slash = trimmed.IndexOf('/');
-            if (slash >= 0)
+            string address = trimmed;
+            if (!Regex.IsMatch(address, "^[A-Za-z][A-Za-z0-9+\\-.]*://"))
             {
-                trimmed = trimmed.Substring(0, slash);
+                address = "https://" + address;
+            }
+
+            Uri uri;
+            if (Uri.TryCreate(address, UriKind.Absolute, out uri) &&
+                (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            {
+                string[] parts = uri.AbsolutePath.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+                int startIndex = parts.Length > 0 &&
+                    String.Equals(parts[0], "station", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+                for (int i = startIndex; i < parts.Length; i++)
+                {
+                    string part = Uri.UnescapeDataString(parts[i]).Trim();
+                    if (Regex.IsMatch(part, "^[A-Za-z0-9_\\-]+$") && !Regex.IsMatch(part, "^\\d+$"))
+                    {
+                        return part;
+                    }
+                }
+
+                return "";
             }
 
             return Regex.Replace(trimmed, "[^A-Za-z0-9_\\-]", "");
@@ -5169,6 +5312,75 @@ namespace GyeolheePinball
                 _box.SelectionStart = Math.Min(_box.TextLength, value.Length);
                 _box.SelectionLength = 0;
             }
+            if (hadFocus)
+            {
+                _box.Focus();
+            }
+            ApplyPlaceholder();
+            QueueTextScrollRefresh();
+        }
+
+        public void AppendTextPreserveView(string value)
+        {
+            AppendTextCore(value, false);
+        }
+
+        public void AppendTextScrollToBottom(string value)
+        {
+            AppendTextCore(value, true);
+        }
+
+        private void AppendTextCore(string value, bool scrollToBottom)
+        {
+            value = value ?? "";
+            if (value.Length == 0)
+            {
+                return;
+            }
+
+            bool hadFocus = _box.Focused;
+            int firstVisibleLine = 0;
+            if (_box.Multiline && _box.IsHandleCreated)
+            {
+                firstVisibleLine = SendMessage(_box.Handle, EM_GETFIRSTVISIBLELINE, IntPtr.Zero, IntPtr.Zero).ToInt32();
+            }
+
+            int selectionStart = _placeholderActive ? 0 : _box.SelectionStart;
+            int selectionLength = _placeholderActive ? 0 : _box.SelectionLength;
+            if (_placeholderActive)
+            {
+                _box.Text = "";
+                _placeholderActive = false;
+            }
+
+            _box.ForeColor = Color.FromArgb(9, 17, 39);
+            _box.AppendText(value);
+            if (scrollToBottom)
+            {
+                _box.SelectionStart = _box.TextLength;
+                _box.SelectionLength = 0;
+                if (_box.Multiline)
+                {
+                    _box.ScrollToCaret();
+                }
+            }
+            else
+            {
+                selectionStart = Math.Max(0, Math.Min(selectionStart, _box.TextLength));
+                selectionLength = Math.Max(0, Math.Min(selectionLength, _box.TextLength - selectionStart));
+                _box.SelectionStart = selectionStart;
+                _box.SelectionLength = selectionLength;
+                if (_box.Multiline && _box.IsHandleCreated)
+                {
+                    int currentFirstLine = SendMessage(_box.Handle, EM_GETFIRSTVISIBLELINE, IntPtr.Zero, IntPtr.Zero).ToInt32();
+                    int delta = firstVisibleLine - currentFirstLine;
+                    if (delta != 0)
+                    {
+                        SendMessage(_box.Handle, EM_LINESCROLL, IntPtr.Zero, new IntPtr(delta));
+                    }
+                }
+            }
+
             if (hadFocus)
             {
                 _box.Focus();
