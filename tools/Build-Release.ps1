@@ -26,13 +26,33 @@ function Resolve-MsBuild {
         throw "MSBuild was not found: $RequestedPath"
     }
 
+    $vswhereCandidates = @(
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe",
+        "${env:ProgramFiles}\Microsoft Visual Studio\Installer\vswhere.exe"
+    )
+
+    foreach ($vswhere in $vswhereCandidates) {
+        if ([String]::IsNullOrWhiteSpace($vswhere) -or !(Test-Path -LiteralPath $vswhere)) {
+            continue
+        }
+
+        $discovered = @(
+            & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" 2>$null
+        ) | Select-Object -First 1
+        if (![String]::IsNullOrWhiteSpace($discovered) -and (Test-Path -LiteralPath $discovered)) {
+            return (Resolve-Path -LiteralPath $discovered).Path
+        }
+    }
+
     $candidates = @(
-        "C:\Program1\MSBuild\Current\Bin\MSBuild.exe",
-        "C:\Program\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles}\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles}\Microsoft Visual Studio\2026\Community\MSBuild\Current\Bin\MSBuild.exe",
         "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2026\BuildTools\MSBuild\Current\Bin\MSBuild.exe",
         "${env:ProgramFiles}\Microsoft Visual Studio\2026\BuildTools\MSBuild\Current\Bin\MSBuild.exe",
         "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe",
-        "${env:ProgramFiles}\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe"
+        "${env:ProgramFiles}\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe",
+        "C:\Program1\MSBuild\Current\Bin\MSBuild.exe",
+        "C:\Program\MSBuild\Current\Bin\MSBuild.exe"
     )
 
     foreach ($candidate in $candidates) {

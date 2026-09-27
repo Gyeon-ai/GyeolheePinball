@@ -1,78 +1,26 @@
-# GyeolheePinball
+# 결희 종겜핀볼
 
-결희 종겜핀볼은 SOOP 라이브 채팅에서 핀볼 추첨에 사용할 목록을 수집하고 관리하는 Windows Forms 프로그램입니다.
+SOOP 라이브 후원을 수집해 [결희 종겜핀볼 사이트](https://gyeon-ai.github.io/GyeolheePinball-Web/)에 사용할 목록을 만드는 Windows 프로그램입니다.
 
-**바로 다운로드:** [결희 종겜핀볼(자동)](https://github.com/Gyeon-ai/GyeolheePinball/raw/refs/heads/main/%EA%B2%B0%ED%9D%AC%20%EC%A2%85%EA%B2%9C%ED%95%80%EB%B3%BC%28%EC%9E%90%EB%8F%99%29.exe) / [결희 종겜핀볼](https://github.com/Gyeon-ai/GyeolheePinball/raw/refs/heads/main/%EA%B2%B0%ED%9D%AC%20%EC%A2%85%EA%B2%9C%ED%95%80%EB%B3%BC.exe)
+**바로 다운로드:** [자동판](https://github.com/Gyeon-ai/GyeolheePinball/raw/refs/heads/main/%EA%B2%B0%ED%9D%AC%20%EC%A2%85%EA%B2%9C%ED%95%80%EB%B3%BC%28%EC%9E%90%EB%8F%99%29.exe) · [일반판](https://github.com/Gyeon-ai/GyeolheePinball/raw/refs/heads/main/%EA%B2%B0%ED%9D%AC%20%EC%A2%85%EA%B2%9C%ED%95%80%EB%B3%BC.exe)
 
-## Versions
+## 일반판과 자동판
 
-| Project | Release file | Description |
-|---|---|---|
-| `GyeolheePinball` | `결희 종겜핀볼.exe` | 결희 UI를 사용하며 핀볼 사이트를 일반 방식으로 엽니다. |
-| `GyeolheePinballAuto` | `결희 종겜핀볼(자동).exe` | 목록이 있으면 Chrome 우선으로 핀볼 사이트를 열고 입력칸 자동 반영을 시도합니다. |
+| 판 | 차이 |
+|---|---|
+| 일반판 | 수집 목록을 복사하거나 저장하고 핀볼 사이트를 엽니다. |
+| 자동판 | Chrome으로 핀볼 사이트를 열 때 수집 목록의 자동 입력을 시도합니다. |
 
-## Features
+## 주요 기능
 
-- SOOP 라이브 채팅 연결
-- 닉네임 모드에서는 기준을 충족한 후원을 즉시 수집
-- 채팅 내용 모드에서는 기준을 충족한 후원자의 다음 채팅 1회 수집
-- 도전미션 후원, 애드벌룬 후원 수집 지원
-- 별풍선, 애드벌룬, 도전미션 수집 대상 선택
-- 정확히 N개 또는 N개 이상 수집 조건 선택
-- 닉네임 또는 채팅 내용 기준 핀볼 목록 생성
-- 수집 목록 검색, 복사, 저장
-- [결희 종겜핀볼](https://gyeon-ai.github.io/GyeolheePinball-Web/) 사이트 열기
-- 자동 버전의 Chrome 우선 핀볼 사이트 입력 반영
-- 결희 라벤더·스카이 블루 UI와 고해상도 아이콘
+- SOOP 라이브 채팅과 별풍선, 애드벌룬, 도전미션 후원을 수집합니다.
+- 닉네임 모드에서는 조건에 맞는 후원을 즉시, 채팅 내용 모드에서는 후원자의 다음 채팅 1회를 수집합니다.
+- 후원 종류와 `정확히 N개` 또는 `N개 이상` 조건을 선택할 수 있습니다.
+- 수집 목록을 검색하고, 복사하고, 메모장 파일로 저장할 수 있습니다.
+- 일반판과 자동판 모두 결희 핀볼 사이트를 엽니다.
 
-## Build Requirements
+## 이번 업데이트
 
-- Windows
-- Visual Studio 2022 또는 Visual Studio Build Tools
-- .NET Framework 4.8 Targeting Pack
-- MSBuild
+버전 `1.0.0.1`에서 `정확히 N개` 조건은 N의 배수에도 적용됩니다. 예를 들어 N이 200개면 200개와 400개가 반영되고 300개는 반영되지 않습니다. 코인 계산은 기존 10회당 1코인 추가 규칙을 유지합니다.
 
-## Build
-
-Visual Studio에서 `GyeolheePinball.sln`을 열고 `Release` 구성으로 빌드할 수 있습니다.
-
-명령줄에서는 다음처럼 번호가 붙은 Release 빌드를 만들 수 있습니다.
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\tools\Build-Release.ps1" -Project All -Configuration Release
-```
-
-특정 버전만 빌드하려면 `-Project GyeolheePinball` 또는 `-Project GyeolheePinballAuto`를 사용합니다.
-
-빌드 결과는 아래 경로에 생성됩니다.
-
-```text
-dist\Release\GyeolheePinball\GyeolheePinball-001.exe
-dist\Release\GyeolheePinballAuto\GyeolheePinballAuto-001.exe
-```
-
-## Repository Layout
-
-```text
-GyeolheePinball/
-GyeolheePinballAuto/
-tools/
-GyeolheePinball.sln
-```
-
-## Release Files
-
-| File | Version | SHA256 |
-|---|---|---|
-| `결희 종겜핀볼.exe` | `1.0.0.0` | `BECA0D5ABFCE46338FE097C679EA1DE76A2829CE74FBA224BDE9461370F1114B` |
-| `결희 종겜핀볼(자동).exe` | `1.0.0.0` | `A619876A312462AB66627876086F921DD5C301F2690DE6E2B0A5E49751DBFE17` |
-
-## Version Info
-
-- Company: Gyeona
-- Version: 1.0.0.0
-- Target framework: .NET Framework 4.8
-
-## Security Note
-
-일반판에는 브라우저 원격 제어 코드가 포함되지 않습니다. `GyeolheePinballAuto`만 Chrome DevTools WebSocket을 사용해 핀볼 사이트 입력칸에 목록을 자동 반영하며, 이 동작은 일부 보안 엔진이나 ML 판정에서 민감하게 보일 수 있습니다.
+자동판의 사이트 입력 기능은 Chrome 환경과 사이트 상태에 따라 동작하지 않을 수 있습니다. 그때는 프로그램의 내용 복사 기능을 사용해 직접 입력할 수 있습니다.
