@@ -11,7 +11,9 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ExpectedTitle,
 
-    [switch]$ExpectAuto
+    [switch]$ExpectAuto,
+
+    [string]$ExpectedVersion = '1.0.0.2'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -31,8 +33,8 @@ $formType = $assembly.GetType("$NamespaceName.MainForm", $true)
 $form = [System.Activator]::CreateInstance($formType, $flags, $null, @(), $null)
 
 try {
-    Assert-Equal '1.0.0.1' $assembly.GetName().Version.ToString() 'Assembly version mismatch'
-    Assert-Equal '1.0.0.1' ([System.Diagnostics.FileVersionInfo]::GetVersionInfo($resolvedExe).FileVersion) 'File version mismatch'
+    Assert-Equal $ExpectedVersion $assembly.GetName().Version.ToString() 'Assembly version mismatch'
+    Assert-Equal $ExpectedVersion ([System.Diagnostics.FileVersionInfo]::GetVersionInfo($resolvedExe).FileVersion) 'File version mismatch'
     Assert-Equal $ExpectedTitle $form.Text 'Window title mismatch'
     Assert-Equal $ExpectedTitle $formType.GetField('_appTitle', $flags).GetValue($form).Text 'Header title mismatch'
     Assert-Equal $true ($form.Icon.Width -ge 128) 'Application icon is missing a large frame'

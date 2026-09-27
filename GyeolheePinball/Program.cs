@@ -118,8 +118,6 @@ namespace GyeolheePinball
         private readonly Color _lavender = Color.FromArgb(240, 232, 255);
         private readonly Color _line = Color.FromArgb(213, 197, 235);
         private readonly Color _card = Color.FromArgb(255, 253, 255);
-        private readonly Color _soft = Color.FromArgb(249, 245, 255);
-        private readonly Color _mint = Color.FromArgb(231, 247, 255);
         private readonly Color _green = Color.FromArgb(51, 180, 151);
         private readonly Color _amber = Color.FromArgb(229, 151, 73);
         private readonly Color _red = Color.FromArgb(218, 83, 117);
@@ -750,9 +748,11 @@ namespace GyeolheePinball
             int margin = viewportWidth < 520 ? 8 : 18;
             int contentWidth = Math.Max(300, viewportWidth - (margin * 2));
             bool stackedLayout = contentWidth < 920;
-            int previousSurfaceScrollY = stackedLayout ? Math.Max(0, -_surface.AutoScrollPosition.Y) : 0;
+            // 넓은 창도 높이가 부족하면 전체 내용을 스크롤할 수 있어야 한다.
+            bool scrollLayout = stackedLayout || viewportHeight < 678;
+            int previousSurfaceScrollY = scrollLayout ? Math.Max(0, -_surface.AutoScrollPosition.Y) : 0;
             _surface.AutoScrollPosition = Point.Empty;
-            if (stackedLayout)
+            if (scrollLayout)
             {
                 contentWidth = Math.Max(300, viewportWidth - (margin * 2) - SystemInformation.VerticalScrollBarWidth);
                 _surface.AutoScroll = true;
@@ -776,7 +776,7 @@ namespace GyeolheePinball
                 int rightWidth = contentWidth - leftWidth - gap;
                 int footerReserve = 28;
                 int pinballHeight = 160;
-                int upperHeight = Math.Max(360, viewportHeight - y - pinballHeight - gap - footerReserve);
+                int upperHeight = Math.Max(384, viewportHeight - y - pinballHeight - gap - footerReserve);
 
                 LayoutSetupCard(margin, y, leftWidth, upperHeight);
                 LayoutCollectionCard(margin + leftWidth + gap, y, rightWidth, upperHeight);
@@ -788,7 +788,8 @@ namespace GyeolheePinball
             {
                 int setupHeight = 390;
                 int collectionHeight = contentWidth < 520 ? 420 : 430;
-                int pinballHeight = contentWidth < 520 ? 362 : 300;
+                // 입력 영역과 버튼 세 개 아래까지 필요한 높이와 여백을 확보한다.
+                int pinballHeight = 382;
                 LayoutSetupCard(margin, y, contentWidth, setupHeight);
                 y += setupHeight + 12;
                 LayoutCollectionCard(margin, y, contentWidth, collectionHeight);
@@ -802,9 +803,9 @@ namespace GyeolheePinball
             y += stackedLayout ? 34 : 20;
 
             int scrollContentHeight = y + (stackedLayout ? 10 : 2);
-            _surface.AutoScrollMinSize = stackedLayout ? new Size(0, scrollContentHeight) : Size.Empty;
+            _surface.AutoScrollMinSize = scrollLayout ? new Size(0, scrollContentHeight) : Size.Empty;
             _surface.ResumeLayout();
-            if (stackedLayout && previousSurfaceScrollY > 0)
+            if (scrollLayout && previousSurfaceScrollY > 0)
             {
                 int maxScrollY = Math.Max(0, scrollContentHeight - _surface.ClientSize.Height);
                 int restoreScrollY = Math.Min(previousSurfaceScrollY, maxScrollY);
@@ -1165,6 +1166,7 @@ namespace GyeolheePinball
 
         private void PositionEntryRows()
         {
+            // 보이는 행만 재사용하며, 편집 중인 행은 다른 항목에 재배정하지 않는다.
             if (_entryList == null)
             {
                 return;
@@ -1299,6 +1301,7 @@ namespace GyeolheePinball
                 int actionSmallY = 90;
                 _copyButton.SetBounds(actionsX, actionSmallY, wideSmallW, 56);
                 _saveButton.SetBounds(actionsX + wideSmallW + smallButtonGap, actionSmallY, wideSmallW, 56);
+                LayoutPinballTotalLabel();
                 return;
             }
 
@@ -1321,7 +1324,24 @@ namespace GyeolheePinball
             int smallW = (width - (pad * 2) - smallGap) / 2;
             _copyButton.SetBounds(pad, smallY, smallW, 36);
             _saveButton.SetBounds(pad + smallW + smallGap, smallY, smallW, 36);
+            LayoutPinballTotalLabel();
 
+        }
+
+        private void LayoutPinballTotalLabel()
+        {
+            if (_pinballText == null || _pinballInputLabel == null || _pinballCountLabel == null)
+            {
+                return;
+            }
+
+            // 합계 자릿수가 늘어도 오른쪽 정렬을 유지하고 '코인'까지 표시한다.
+            int measuredWidth = TextRenderer.MeasureText(_pinballCountLabel.Text, _pinballCountLabel.Font).Width + 4;
+            int availableWidth = Math.Max(92, _pinballText.Right - _pinballInputLabel.Left - 120);
+            int labelWidth = Math.Min(availableWidth, Math.Max(92, measuredWidth));
+            _pinballCountLabel.Width = labelWidth;
+            _pinballCountLabel.Left = _pinballText.Right - labelWidth;
+            _pinballInputLabel.Width = Math.Max(0, _pinballCountLabel.Left - _pinballInputLabel.Left - 8);
         }
 
         private void LayoutFooter(int x, int y, int width)
@@ -1609,6 +1629,7 @@ namespace GyeolheePinball
 
             PrunePendingGifts();
             PendingGift matched = null;
+            // 같은 닉네임의 대기 후원은 수신 순서대로 채팅 1회씩 소비한다.
             for (int i = 0; i < _pending.Count; i++)
             {
                 if (String.Equals(_pending[i].Nickname, nickname, StringComparison.OrdinalIgnoreCase))
@@ -1669,6 +1690,7 @@ namespace GyeolheePinball
 
         private void PrunePendingGifts()
         {
+            // 오래된 후원이 이후의 무관한 채팅에 연결되지 않도록 대기 시간을 제한한다.
             DateTime cutoff = DateTime.Now.AddMinutes(-10);
             for (int i = _pending.Count - 1; i >= 0; i--)
             {
@@ -1682,6 +1704,7 @@ namespace GyeolheePinball
         private int CalculateCoins(int balloonCount)
         {
             int unit = GetCoinUnit();
+            // 한 번의 후원에서 기준 단위 10회마다 보너스 1코인을 더한다.
             int baseCoins = balloonCount / unit;
             int bonusCoins = baseCoins / 10;
             return Math.Max(1, baseCoins + bonusCoins);
@@ -1896,6 +1919,7 @@ namespace GyeolheePinball
                     ? _generatedPinballCoinTotal
                     : CalculateReflectedCoinTotal();
                 _pinballCountLabel.Text = "총 " + total.ToString("#,0") + "코인";
+                LayoutPinballTotalLabel();
             }
         }
 
@@ -2570,10 +2594,6 @@ namespace GyeolheePinball
             return cleaned;
         }
 
-        private string GetConditionText()
-        {
-            return _exactMode ? "정확히 " + _thresholdInput.Value + "개" : _thresholdInput.Value + "개 이상";
-        }
 
         private string GetConditionToastText()
         {
@@ -2605,18 +2625,6 @@ namespace GyeolheePinball
             return panel;
         }
 
-        private PillLabel StepBadge(string text)
-        {
-            var label = new PillLabel();
-            label.Text = text;
-            label.TextAlign = ContentAlignment.MiddleCenter;
-            label.Font = UiFont.Make(10.2f, FontStyle.Bold);
-            label.ForeColor = _purpleDark;
-            label.FillColor = _lavender;
-            label.BorderColor = Color.FromArgb(204, 181, 233);
-            label.Radius = 11;
-            return label;
-        }
 
         private Label PlainLabel(string text, float size, FontStyle style, Color color)
         {
@@ -2707,23 +2715,7 @@ namespace GyeolheePinball
             return button;
         }
 
-        private RoundButton MintButton(string text)
-        {
-            var button = BaseButton(text);
-            button.FillColor = _mint;
-            button.BorderColor = Color.FromArgb(244, 162, 208);
-            button.ForeColor = Color.FromArgb(132, 38, 91);
-            return button;
-        }
 
-        private RoundButton LinkButton(string text)
-        {
-            var button = BaseButton(text);
-            button.FillColor = _card;
-            button.BorderColor = _card;
-            button.ForeColor = _muted;
-            return button;
-        }
 
     }
 
@@ -3002,6 +2994,7 @@ namespace GyeolheePinball
                 return;
             }
 
+            // 후원 패킷마다 닉네임과 개수의 필드 위치가 다르므로 분기별로 검증한다.
             if (serviceCommand == 18)
             {
                 if (parts.Length >= 4)
@@ -3633,6 +3626,7 @@ namespace GyeolheePinball
             _indexBadge.BorderColor = _lavender;
             _indexBadge.Radius = 8;
             Controls.Add(_indexBadge);
+            // 표시 모드에서는 행이 직접 그린다. 숨긴 컨트롤은 글꼴·영역과 편집 상태를 유지한다.
             _indexBadge.Visible = false;
 
             _editFrame = new RoundedPanel();
@@ -3950,12 +3944,12 @@ namespace GyeolheePinball
             _editFrame.SetBounds(editX, controlY, editW, 30);
             _nameBox.SetBounds(
                 editX + NameHorizontalPadding,
-                controlY + 6,
+                controlY + Math.Max(0, (30 - _nameBox.PreferredHeight) / 2),
                 Math.Max(40, editW - (NameHorizontalPadding * 2)),
-                18);
+                _nameBox.PreferredHeight);
             _metaLabel.SetBounds(metaX, controlY, metaW, 30);
             _coinFrame.SetBounds(coinX, controlY, coinW, 30);
-            _coinBox.SetBounds(coinX + 5, controlY + 6, Math.Max(18, coinW - 10), 18);
+            _coinBox.SetBounds(coinX + 5, controlY + Math.Max(0, (30 - _coinBox.PreferredHeight) / 2), Math.Max(18, coinW - 10), _coinBox.PreferredHeight);
             _showMeta = showMeta;
             _showCoin = Width >= 330;
             if (!_showCoin)
