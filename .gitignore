@@ -8,3 +8,6 @@ dist/
 *.cache
 *.pdb
 *.log
+*.tayokey
+*signing-key*.dat
+*private-key*.xml
