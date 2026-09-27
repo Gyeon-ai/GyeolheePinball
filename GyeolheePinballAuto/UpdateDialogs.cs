@@ -26,20 +26,11 @@ namespace GyeolheePinballAuto
             ShowInTaskbar = false;
             MaximizeBox = false;
             MinimizeBox = false;
-            ControlBox = canClose;
+            ControlBox = false;
             BackColor = SurfaceColor;
             Font = UiFont.Make(9.0f, FontStyle.Regular);
             DoubleBuffered = true;
 
-            var header = AddText("caption", caption, 9.5f, FontStyle.Regular, MutedColor, 24, 15, 336, 22);
-            header.MouseDown += delegate(object sender, MouseEventArgs e)
-            {
-                if (e.Button == MouseButtons.Left)
-                {
-                    ReleaseCapture();
-                    SendMessage(Handle, 0x00A1, new IntPtr(2), IntPtr.Zero);
-                }
-            };
             if (canClose)
             {
                 var close = new UpdateActionButton();
@@ -50,10 +41,19 @@ namespace GyeolheePinballAuto
                 close.FillColor = SurfaceColor;
                 close.LineColor = SurfaceColor;
                 close.ForeColor = MutedColor;
-                close.SetBounds(374, 10, 32, 32);
+                close.SetBounds(374, 21, 28, 28);
                 close.DialogResult = DialogResult.Cancel;
                 close.TabIndex = 2;
                 Controls.Add(close);
+            }
+        }
+
+        protected void DragWindow(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                ReleaseCapture();
+                SendMessage(Handle, 0x00A1, new IntPtr(2), IntPtr.Zero);
             }
         }
 
@@ -148,19 +148,35 @@ namespace GyeolheePinballAuto
     {
         public UpdatePromptDialog(Version version, string releaseNotes) : base("업데이트 안내", true)
         {
-            AddText("title", "새 버전을 사용할 수 있습니다", 13.0f, FontStyle.Bold, TextColor, 24, 49, 372, 30);
-            AddText("version", "버전 " + version, 9.5f, FontStyle.Bold, AccentColor, 24, 84, 372, 22);
-            var notes = AddText("notes", releaseNotes, 10.0f, FontStyle.Regular, MutedColor, 24, 114, 372, 42);
-            Size measured = TextRenderer.MeasureText(notes.Text, notes.Font, new Size(372, Int32.MaxValue),
+            var title = AddText("title", "새 버전을 사용할 수 있습니다", 13.0f, FontStyle.Bold, TextColor, 18, 20, 348, 30);
+            title.MouseDown += DragWindow;
+            AddText("version", "버전 " + version, 9.5f, FontStyle.Bold, AccentColor, 18, 56, 384, 22);
+            var notesBox = new RoundedPanel();
+            notesBox.Name = "notesBox";
+            notesBox.AccessibleName = "업데이트 내용";
+            notesBox.Radius = 8;
+            notesBox.FillColor = Color.White;
+            notesBox.BorderColor = BorderColor;
+            notesBox.SetBounds(18, 86, 384, 0);
+            Controls.Add(notesBox);
+
+            var notesTitle = AddText("notesTitle", "업데이트 내용", 9.5f, FontStyle.Bold, TextColor, 14, 12, 356, 22);
+            notesTitle.BackColor = notesBox.FillColor;
+            notesBox.Controls.Add(notesTitle);
+            var notes = AddText("notes", releaseNotes, 10.0f, FontStyle.Regular, MutedColor, 14, 40, 356, 42);
+            notes.BackColor = notesBox.FillColor;
+            notesBox.Controls.Add(notes);
+            Size measured = TextRenderer.MeasureText(notes.Text, notes.Font, new Size(notes.Width, Int32.MaxValue),
                 TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.WordBreak);
             notes.Height = Math.Max(42, measured.Height + 4);
-            int buttonY = notes.Bottom + 24;
-            ClientSize = new Size(420, buttonY + 38 + 22);
+            notesBox.Height = notes.Bottom + 14;
+            int buttonY = notesBox.Bottom + 16;
+            ClientSize = new Size(420, buttonY + 38 + 16);
 
-            var later = AddAction("laterButton", "나중에", false, 202, buttonY);
+            var later = AddAction("laterButton", "나중에", false, 208, buttonY);
             later.DialogResult = DialogResult.Cancel;
             later.TabIndex = 0;
-            var update = AddAction("updateButton", "업데이트", true, 304, buttonY);
+            var update = AddAction("updateButton", "업데이트", true, 310, buttonY);
             update.DialogResult = DialogResult.OK;
             update.TabIndex = 1;
             AcceptButton = update;
