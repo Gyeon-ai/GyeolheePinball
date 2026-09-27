@@ -1563,7 +1563,10 @@ namespace GyeolheePinball
                 nickname = "익명";
             }
 
-            bool passed = _exactMode ? count == _thresholdInput.Value : count >= _thresholdInput.Value;
+            int threshold = _thresholdInput.Value;
+            bool passed = _exactMode
+                ? count >= threshold && count % threshold == 0
+                : count >= threshold;
             if (!passed)
             {
                 return;
