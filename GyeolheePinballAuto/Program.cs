@@ -185,6 +185,7 @@ namespace GyeolheePinballAuto
         private Label _pinballCountLabel;
         private RoundTextBox _pinballText;
         private RoundButton _openPinballButton;
+        private bool _openingPinballSite;
         private RoundButton _copyButton;
         private RoundButton _saveButton;
         private readonly StringBuilder _generatedPinballText = new StringBuilder();
@@ -2473,6 +2474,13 @@ namespace GyeolheePinballAuto
 
         private async void OpenPinballSite()
         {
+            if (_openingPinballSite)
+            {
+                return;
+            }
+
+            _openingPinballSite = true;
+            _openPinballButton.Enabled = false;
             try
             {
                 string names = NormalizePinballNames(_pinballText.Text);
@@ -2483,23 +2491,51 @@ namespace GyeolheePinballAuto
                 }
 
                 string url = BuildPinballSiteUrl(names);
-                Clipboard.SetText(names);
+                ExternalException clipboardError = null;
+                try
+                {
+                    Clipboard.SetText(names);
+                }
+                catch (ExternalException ex)
+                {
+                    clipboardError = ex;
+                }
                 ShowToast("Chrome 우선으로 핀볼 사이트에 직접 반영합니다.");
-                bool injected = await PinballSiteInjector.OpenAndInjectAsync(PinballUrl, names);
-                if (injected)
+                PinballSiteInjector.InjectionResult result = await PinballSiteInjector.OpenAndInjectAsync(
+                    PinballUrl, names, CalculatePinballTextCoinTotal(names));
+                if (result.Injected)
                 {
                     ShowToast("핀볼 사이트에 수집 목록을 반영했습니다.");
                 }
                 else
                 {
-                    string fallbackUrl = url.Length <= DirectPinballUrlLimit ? url : PinballUrl;
-                    PinballSiteInjector.OpenInPreferredBrowser(fallbackUrl);
-                    ShowToast("자동 반영에 실패해 Chrome 우선으로 사이트를 열고 목록을 클립보드에 복사했습니다.");
+                    if (!result.SiteOpened)
+                    {
+                        string fallbackUrl = url.Length <= DirectPinballUrlLimit ? url : PinballUrl;
+                        PinballSiteInjector.OpenInPreferredBrowser(fallbackUrl);
+                    }
+
+                    if (clipboardError == null)
+                    {
+                        ShowToast("자동 반영에 실패해 Chrome 우선으로 사이트를 열고 목록을 클립보드에 복사했습니다.");
+                    }
+                    else
+                    {
+                        MessageBox.Show(clipboardError.Message, "사이트 열기 실패", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "사이트 열기 실패", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _openingPinballSite = false;
+                if (!IsDisposed)
+                {
+                    _openPinballButton.Enabled = true;
+                }
             }
         }
 
@@ -2777,17 +2813,32 @@ namespace GyeolheePinballAuto
     {
         private static readonly JavaScriptSerializer Serializer = new JavaScriptSerializer();
 
-        public static async Task<bool> OpenAndInjectAsync(string url, string names)
+        public struct InjectionResult
+        {
+            public readonly bool BrowserStarted;
+            public readonly bool SiteOpened;
+            public readonly bool Injected;
+
+            public InjectionResult(bool browserStarted, bool siteOpened, bool injected)
+            {
+                BrowserStarted = browserStarted;
+                SiteOpened = siteOpened;
+                Injected = injected;
+            }
+        }
+
+        public static async Task<InjectionResult> OpenAndInjectAsync(string url, string names, long expectedCoins)
         {
             foreach (string browserPath in FindPreferredBrowserCandidates())
             {
-                if (await TryOpenAndInjectAsync(browserPath, url, names))
+                InjectionResult result = await TryOpenAndInjectAsync(browserPath, url, names, expectedCoins);
+                if (result.BrowserStarted)
                 {
-                    return true;
+                    return result;
                 }
             }
 
-            return false;
+            return new InjectionResult(false, false, false);
         }
 
         public static bool OpenInPreferredBrowser(string url)
@@ -2815,7 +2866,7 @@ namespace GyeolheePinballAuto
             }
         }
 
-        private static async Task<bool> TryOpenAndInjectAsync(string browserPath, string url, string names)
+        private static async Task<InjectionResult> TryOpenAndInjectAsync(string browserPath, string url, string names, long expectedCoins)
         {
             int port = ReserveLoopbackPort();
             string profileDir = Path.Combine(Path.GetTempPath(), "GyeolheePinballBrowser-" + port.ToString());
@@ -2830,27 +2881,68 @@ namespace GyeolheePinballAuto
             }
             catch
             {
-                return false;
+                return new InjectionResult(false, false, false);
             }
 
             string wsUrl = await WaitForWebSocketDebuggerUrlAsync(port);
             if (wsUrl.Length == 0)
             {
-                return false;
+                return new InjectionResult(true, false, false);
             }
 
-            string script = BuildInjectionScript(names);
-            for (int attempt = 0; attempt < 18; attempt++)
+            bool ready = false;
+            var readyTimer = Stopwatch.StartNew();
+            while (readyTimer.Elapsed < TimeSpan.FromSeconds(20))
             {
-                if (await EvaluateBooleanAsync(wsUrl, script))
+                try
                 {
-                    return true;
+                    ready = await EvaluateBooleanAsync(wsUrl, BuildReadyScript());
+                }
+                catch
+                {
+                    ready = false;
+                }
+
+                if (ready)
+                {
+                    break;
                 }
 
                 await Task.Delay(250);
             }
 
-            return false;
+            if (!ready)
+            {
+                return new InjectionResult(true, true, false);
+            }
+
+            string injectionScript = BuildInjectionScript(names);
+            string verificationScript = BuildVerificationScript(names, expectedCoins);
+            for (int attempt = 0; attempt < 3; attempt++)
+            {
+                try
+                {
+                    if (await EvaluateBooleanAsync(wsUrl, injectionScript))
+                    {
+                        await Task.Delay(500);
+                        if (await EvaluateBooleanAsync(wsUrl, verificationScript))
+                        {
+                            await Task.Delay(500);
+                            if (await EvaluateBooleanAsync(wsUrl, verificationScript))
+                            {
+                                return new InjectionResult(true, true, true);
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                }
+
+                await Task.Delay(250);
+            }
+
+            return new InjectionResult(true, true, false);
         }
 
         private static IEnumerable<string> FindPreferredBrowserCandidates()
@@ -2942,7 +3034,7 @@ namespace GyeolheePinballAuto
             using (var client = new WebClient())
             {
                 client.Encoding = Encoding.UTF8;
-                for (int attempt = 0; attempt < 32; attempt++)
+                for (int attempt = 0; attempt < 60; attempt++)
                 {
                     try
                     {
@@ -2973,7 +3065,6 @@ namespace GyeolheePinballAuto
                 return "";
             }
 
-            string fallback = "";
             foreach (object tab in tabs)
             {
                 var item = tab as Dictionary<string, object>;
@@ -2984,18 +3075,16 @@ namespace GyeolheePinballAuto
 
                 string wsUrl = Convert.ToString(item["webSocketDebuggerUrl"]);
                 string tabUrl = item.ContainsKey("url") ? Convert.ToString(item["url"]) : "";
-                if (fallback.Length == 0)
-                {
-                    fallback = wsUrl;
-                }
-
-                if (tabUrl.IndexOf("gyeon-ai.github.io/GyeolheePinball-Web", StringComparison.OrdinalIgnoreCase) >= 0)
+                Uri tabUri;
+                if (Uri.TryCreate(tabUrl, UriKind.Absolute, out tabUri) &&
+                    String.Equals(tabUri.GetLeftPart(UriPartial.Path).TrimEnd('/'),
+                        "https://gyeon-ai.github.io/GyeolheePinball-Web", StringComparison.OrdinalIgnoreCase))
                 {
                     return wsUrl;
                 }
             }
 
-            return fallback;
+            return "";
         }
 
         private static async Task<bool> EvaluateBooleanAsync(string wsUrl, string script)
@@ -3045,21 +3134,40 @@ namespace GyeolheePinballAuto
 
         private static bool ResponseIsTrue(string response)
         {
-            return response.IndexOf("\"value\":true", StringComparison.OrdinalIgnoreCase) >= 0;
+            var message = Serializer.DeserializeObject(response) as Dictionary<string, object>;
+            object resultValue;
+            var result = message != null && message.TryGetValue("result", out resultValue)
+                ? resultValue as Dictionary<string, object> : null;
+            object remoteValue;
+            var remote = result != null && result.TryGetValue("result", out remoteValue)
+                ? remoteValue as Dictionary<string, object> : null;
+            object value;
+            return remote != null && remote.TryGetValue("value", out value) && value is bool && (bool)value;
+        }
+
+        private static string BuildReadyScript()
+        {
+            return "(function(){var target=document.querySelector('#in_names');var maps=document.querySelector('#sltMap');" +
+                   "return !!(target&&maps&&maps.options.length>0&&window.roulette&&window.roulette.isReady);})()";
         }
 
         private static string BuildInjectionScript(string names)
         {
             string jsonValue = Serializer.Serialize(names);
             return "(function(){var value=" + jsonValue + ";" +
-                   "function setValue(el,val){var proto=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;" +
-                   "var desc=Object.getOwnPropertyDescriptor(proto,'value');if(desc&&desc.set){desc.set.call(el,val);}else{el.value=val;}" +
-                   "el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}" +
-                   "var controls=Array.prototype.slice.call(document.querySelectorAll('textarea,input'));" +
-                   "controls=controls.filter(function(el){var type=(el.type||'').toLowerCase();return ['button','submit','range','checkbox','radio','hidden'].indexOf(type)<0;});" +
-                   "var target=controls.filter(function(el){return String(el.value||'').indexOf('*')>=0;})[0];" +
-                   "if(!target){controls.sort(function(a,b){return (b.clientWidth*b.clientHeight)-(a.clientWidth*a.clientHeight);});target=controls[0];}" +
-                   "if(!target){return false;}setValue(target,value);target.focus();return target.value===value;})()";
+                   "var target=document.querySelector('#in_names');if(!target){return false;}" +
+                   "var desc=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value');" +
+                   "if(desc&&desc.set){desc.set.call(target,value);}else{target.value=value;}" +
+                   "target.dispatchEvent(new Event('input',{bubbles:true}));" +
+                   "target.dispatchEvent(new Event('change',{bubbles:true}));" +
+                   "target.focus();return target.value===value;})()";
+        }
+
+        private static string BuildVerificationScript(string names, long expectedCoins)
+        {
+            return "(function(){var target=document.querySelector('#in_names');return !!(target&&" +
+                   "target.value===" + Serializer.Serialize(names) + "&&window.roulette&&" +
+                   "window.roulette.getCount()===" + expectedCoins.ToString(System.Globalization.CultureInfo.InvariantCulture) + ");})()";
         }
     }
 
