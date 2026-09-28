@@ -1,16 +1,16 @@
 {
     "SchemaVersion":  2,
     "ProductId":  "Gyeon-ai/GyeolheePinball",
-    "Version":  "1.0.0.5",
-    "ReleaseNotes":  "업데이트 안내창의 패치 설명을 테두리 박스로 구분하고, 상단 제목과 닫기 버튼의 정렬 및 좌우·하단 여백을 다듬었습니다. 본 프로그램의 글씨와 수집·코인 계산 규칙은 그대로입니다.",
+    "Version":  "1.0.0.6",
+    "ReleaseNotes":  "자동판의 핀볼 사이트 반영 안정성을 개선했습니다. 사이트 준비를 기다린 뒤 수집 목록과 코인 수를 확인합니다. 수집 및 코인 규칙은 그대로입니다.",
     "Standard":  {
                      "Url":  "https://github.com/Gyeon-ai/GyeolheePinball/raw/refs/heads/main/%EA%B2%B0%ED%9D%AC%20%EC%A2%85%EA%B2%9C%ED%95%80%EB%B3%BC.exe",
-                     "Sha256":  "6D77543E6DCA0FCC4B4AE2F37F67AC1760D670EE83265501154A681EB70370A8",
+                     "Sha256":  "97DFD828765E8B493ECEA12D9D09CFC31330DEA13A3D931C9C6B571743C2BF83",
                      "Size":  2963456
                  },
     "Auto":  {
                  "Url":  "https://github.com/Gyeon-ai/GyeolheePinball/raw/refs/heads/main/%EA%B2%B0%ED%9D%AC%20%EC%A2%85%EA%B2%9C%ED%95%80%EB%B3%BC%28%EC%9E%90%EB%8F%99%29.exe",
-                 "Sha256":  "E1087D4AAD808E7FC9B612FE3E325BF5B2599EED6D6D6B99B0E1DB066A430423",
-                 "Size":  2979328
+                 "Sha256":  "2DB8DC3435766B962F4623B52154BEB096A978A2B8E6BCA25DB12602872CDCFA",
+                 "Size":  2981376
              }
 }
