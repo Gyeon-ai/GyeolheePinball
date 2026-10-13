@@ -36,7 +36,7 @@ try {
     Assert-Equal $ExpectedVersion $assembly.GetName().Version.ToString() 'Assembly version mismatch'
     Assert-Equal $ExpectedVersion ([System.Diagnostics.FileVersionInfo]::GetVersionInfo($resolvedExe).FileVersion) 'File version mismatch'
     Assert-Equal $ExpectedTitle $form.Text 'Window title mismatch'
-    Assert-Equal $ExpectedTitle $formType.GetField('_appTitle', $flags).GetValue($form).Text 'Header title mismatch'
+    Assert-Equal $true ($null -ne $formType.GetField('_stage', $flags).GetValue($form)) 'Main drawing surface is missing'
     Assert-Equal $true ($form.Icon.Width -ge 128) 'Application icon is missing a large frame'
     Assert-Equal $true ($form.Icon.Height -ge 128) 'Application icon is missing a large frame'
 
@@ -45,48 +45,34 @@ try {
 
     $layoutUi = $formType.GetMethod('LayoutUi', $flags)
     $layoutUi.Invoke($form, @()) | Out-Null
-    $surface = $formType.GetField('_surface', $flags).GetValue($form)
-    Assert-Equal ([System.Drawing.Color]::FromArgb(237, 232, 255)) $surface.TopColor 'Top background color mismatch'
-    Assert-Equal ([System.Drawing.Color]::FromArgb(218, 243, 255)) $surface.BottomColor 'Bottom background color mismatch'
-    Assert-Equal ([System.Drawing.Color]::FromArgb(73, 53, 111)) $formType.GetField('_appTitle', $flags).GetValue($form).ForeColor 'Header color mismatch'
-    $logo = $formType.GetField('_logo', $flags).GetValue($form)
-    $headerTitle = $formType.GetField('_appTitle', $flags).GetValue($form)
-    $headerSubtitle = $formType.GetField('_appSubtitle', $flags).GetValue($form)
-    Assert-Equal 68 $logo.Width 'Header logo width mismatch'
-    Assert-Equal 68 $logo.Height 'Header logo height mismatch'
-    Assert-Equal 0 $logo.FillColor.A 'Header logo square fill is visible'
-    Assert-Equal 0 $logo.BorderColor.A 'Header logo square border is visible'
-    Assert-Equal 2 ($headerSubtitle.Left - $headerTitle.Left) 'Header optical alignment offset mismatch'
-    Assert-Equal ($headerTitle.Top - $logo.Top) ($logo.Bottom - $headerSubtitle.Bottom) 'Header text group is not vertically centered with the logo'
-    Assert-Equal ([System.Drawing.ContentAlignment]::MiddleLeft) $headerTitle.TextAlign 'Header title alignment mismatch'
-    Assert-Equal ([System.Drawing.ContentAlignment]::MiddleLeft) $headerSubtitle.TextAlign 'Header subtitle alignment mismatch'
+    # Arcade dot palette of the Gyeolhee web board.
+    $colors = $assembly.GetType("$NamespaceName.ArcadeColors", $true)
+    $staticFlags = [System.Reflection.BindingFlags]'Static,Public,NonPublic'
+    Assert-Equal ([System.Drawing.Color]::FromArgb(0x2e, 0x2a, 0x5c).ToArgb()) $colors.GetField('Background', $staticFlags).GetValue($null).ToArgb() 'Background color mismatch'
+    Assert-Equal ([System.Drawing.Color]::FromArgb(0x5f, 0x53, 0xb8).ToArgb()) $colors.GetField('Header', $staticFlags).GetValue($null).ToArgb() 'Header color mismatch'
+    Assert-Equal ([System.Drawing.Color]::FromArgb(0xa9, 0xd8, 0xff).ToArgb()) $colors.GetField('Accent', $staticFlags).GetValue($null).ToArgb() 'Accent color mismatch'
 
+    # The list is drawn directly: only visible rows are painted and no per-row controls are created.
     $seedMethod = $formType.GetMethods($flags) |
         Where-Object { $_.Name -eq 'SeedManyPreviewRows' -and $_.GetParameters().Count -eq 1 } |
         Select-Object -First 1
     $seedMethod.Invoke($form, @(400)) | Out-Null
     $formType.GetMethod('RefreshCounts', $flags).Invoke($form, @()) | Out-Null
-    $entryList = $formType.GetField('_entryList', $flags).GetValue($form)
-    $compactRowCount = $entryList.Controls.Count
-    $form.ClientSize = [System.Drawing.Size]::new($form.ClientSize.Width, 1350)
-    $layoutUi.Invoke($form, @()) | Out-Null
-    $expandedRowCount = $entryList.Controls.Count
-    $expectedVisibleRows = [Math]::Ceiling($entryList.ClientSize.Height / $entryList.Controls[0].Height)
-    Assert-Equal $true ($expandedRowCount -gt $compactRowCount) 'The row pool did not grow with the window height'
-    Assert-Equal $true ($expandedRowCount -ge $expectedVisibleRows) 'The expanded list cannot fill its visible height'
-    Assert-Equal $true ($expandedRowCount -le ($expectedVisibleRows + 1)) 'The expanded list created too many row controls'
-    $form.ClientSize = [System.Drawing.Size]::new($form.ClientSize.Width, 680)
-    $layoutUi.Invoke($form, @()) | Out-Null
-    Assert-Equal $expandedRowCount $entryList.Controls.Count 'The row pool was rebuilt while shrinking the window'
-    $form.ClientSize = [System.Drawing.Size]::new(1630, 900)
-    $layoutUi.Invoke($form, @()) | Out-Null
-    $firstRow = $entryList.Controls[0]
-    $rowType = $firstRow.GetType()
-    $editFrame = $rowType.GetField('_editFrame', $flags).GetValue($firstRow)
-    $metaLabel = $rowType.GetField('_metaLabel', $flags).GetValue($firstRow)
-    Assert-Equal 10 ($metaLabel.Left - $editFrame.Right) 'The name field does not fill the space before metadata'
-    Assert-Equal $true ($editFrame.Width -gt 500) 'The name field is still capped at the old fixed width'
-    Assert-Equal ([System.Drawing.ContentAlignment]::MiddleLeft) $metaLabel.TextAlign 'The metadata is not aligned next to the name field'
+    $stage = $formType.GetField('_stage', $flags).GetValue($form)
+    $controlCount = $stage.Controls.Count
+    Assert-Equal 400 $formType.GetField('_visibleEntries', $flags).GetValue($form).Count 'The 400-item list is not fully listed'
+    Assert-Equal $true ($controlCount -lt 20) 'Row controls were created for list items'
+    foreach ($size in @(@(1280, 1350), @(1280, 680), @(1630, 900))) {
+        $form.ClientSize = [System.Drawing.Size]::new($size[0], $size[1])
+        $layoutUi.Invoke($form, @()) | Out-Null
+        Assert-Equal $controlCount $stage.Controls.Count 'Resizing created or removed controls'
+        $bitmap = New-Object System.Drawing.Bitmap($form.ClientSize.Width, $form.ClientSize.Height)
+        try { $stage.DrawToBitmap($bitmap, (New-Object System.Drawing.Rectangle(0, 0, $bitmap.Width, $bitmap.Height))) }
+        finally { $bitmap.Dispose() }
+    }
+    $formType.GetField('_entries', $flags).GetValue($form).Clear()
+    $formType.GetMethod('RefreshPinballText', $flags, $null, [type[]]@([bool]), $null).Invoke($form, @($false)) | Out-Null
+    $formType.GetMethod('RefreshCounts', $flags).Invoke($form, @()) | Out-Null
 
     $calculateCoins = $formType.GetMethod('CalculateCoins', $flags)
     Assert-Equal 1 $calculateCoins.Invoke($form, @(100)) '100-count coin calculation failed'
@@ -152,7 +138,9 @@ try {
     Assert-Equal ($before + 1) $entries.Count 'Content mode did not collect exact multiple'
     Assert-Equal 2 $entries[$entries.Count - 1].CoinCount 'Content mode lost exact-multiple coins'
 
-    $source = [System.IO.File]::ReadAllText((Resolve-Path -LiteralPath $SourcePath), [System.Text.Encoding]::UTF8)
+    # Check every source file of the project, not only Program.cs.
+    $sourceDirectory = Split-Path -Parent (Resolve-Path -LiteralPath $SourcePath)
+    $source = (Get-ChildItem -LiteralPath $sourceDirectory -Filter '*.cs' -File | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName, [System.Text.Encoding]::UTF8) }) -join "`n"
     foreach ($command in 18, 33, 87, 121) {
         Assert-Equal $true $source.Contains("serviceCommand == $command") "Packet command $command is missing"
     }
