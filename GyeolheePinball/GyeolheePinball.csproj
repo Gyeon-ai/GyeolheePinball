@@ -41,6 +41,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="ArcadeMainForm.cs" />
+    <Compile Include="ArcadeUi.cs" />
     <Compile Include="SelfUpdater.cs" />
     <Compile Include="UpdateDialogs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -55,6 +57,21 @@
     </EmbeddedResource>
     <EmbeddedResource Include="app.ico">
       <LogicalName>GyeolheePinballIcon</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="arcade-icon.png">
+      <LogicalName>GyeolheePinballArcadeIcon</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="fonts\Galmuri11.ttf" Condition="Exists('fonts\Galmuri11.ttf')">
+      <LogicalName>ArcadeFontGalmuri11</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="fonts\Galmuri11-Bold.ttf" Condition="Exists('fonts\Galmuri11-Bold.ttf')">
+      <LogicalName>ArcadeFontGalmuri11Bold</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="fonts\PressStart2P-Regular.ttf" Condition="Exists('fonts\PressStart2P-Regular.ttf')">
+      <LogicalName>ArcadeFontPressStart2P</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="fonts\DoHyeon-Regular.ttf" Condition="Exists('fonts\DoHyeon-Regular.ttf')">
+      <LogicalName>ArcadeFontDoHyeon</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

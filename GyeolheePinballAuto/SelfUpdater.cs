@@ -988,7 +988,7 @@ namespace GyeolheePinballAuto
 
     internal sealed class UpdateProgressDialog : Form
     {
-        private readonly ProgressBar _progressBar;
+        private readonly UpdateProgressBar _progressBar;
 
         public UpdateProgressDialog()
         {
@@ -1000,21 +1000,18 @@ namespace GyeolheePinballAuto
             MaximizeBox = false;
             MinimizeBox = false;
             ControlBox = false;
-            BackColor = Color.FromArgb(251, 253, 255);
+            BackColor = ArcadeColors.Header;
             Font = UiFont.Make(9.0f, FontStyle.Regular);
 
             var label = new Label();
             label.Text = "업데이트 파일을 안전하게 확인하고 있습니다.";
             label.SetBounds(24, 20, 342, 24);
             label.Font = UiFont.Make(9.2f, FontStyle.Bold);
-            label.ForeColor = Color.FromArgb(10, 18, 34);
+            label.ForeColor = ArcadeColors.Text;
             Controls.Add(label);
 
-            _progressBar = new ProgressBar();
+            _progressBar = new UpdateProgressBar();
             _progressBar.SetBounds(24, 58, 342, 18);
-            _progressBar.Minimum = 0;
-            _progressBar.Maximum = 100;
-            _progressBar.Style = ProgressBarStyle.Continuous;
             Controls.Add(_progressBar);
         }
 
@@ -1031,7 +1028,7 @@ namespace GyeolheePinballAuto
                 return;
             }
 
-            _progressBar.Value = Math.Max(_progressBar.Minimum, Math.Min(_progressBar.Maximum, value));
+            _progressBar.Value = value;
         }
     }
 }

@@ -9,11 +9,12 @@ namespace GyeolheePinball
     // Keep the frame and controls on one opaque surface; DWM owns the anti-aliased outer corners.
     internal class UpdateDialog : Form
     {
-        protected static readonly Color SurfaceColor = Color.FromArgb(246, 240, 255);
-        protected static readonly Color TextColor = Color.FromArgb(54, 44, 84);
-        protected static readonly Color MutedColor = Color.FromArgb(82, 68, 111);
-        protected static readonly Color AccentColor = Color.FromArgb(157, 105, 223);
-        protected static readonly Color BorderColor = Color.FromArgb(205, 184, 232);
+        // 메인 화면("오락실 도트")과 같은 색을 쓴다.
+        protected static readonly Color SurfaceColor = ArcadeColors.Header;
+        protected static readonly Color TextColor = ArcadeColors.Text;
+        protected static readonly Color MutedColor = ArcadeColors.Soft;
+        protected static readonly Color AccentColor = ArcadeColors.Accent;
+        protected static readonly Color BorderColor = ArcadeColors.Accent;
         private bool _nativeFrame;
 
         protected UpdateDialog(string caption, bool canClose)
@@ -76,10 +77,11 @@ namespace GyeolheePinball
             var button = new UpdateActionButton();
             button.Name = name;
             button.Text = text;
-            button.Font = UiFont.Make(10.0f, FontStyle.Bold);
-            button.FillColor = primary ? AccentColor : Color.White;
-            button.LineColor = primary ? AccentColor : BorderColor;
-            button.ForeColor = primary ? Color.White : TextColor;
+            button.Font = ArcadeFonts.Get(ArcadeFonts.Pixel, 12f * DeviceDpi / 96f, false);
+            // FillColor는 단추 면, LineColor는 아래로 떨어지는 그림자 색이다.
+            button.FillColor = primary ? ArcadeColors.Rose : Color.FromArgb(0x5d, 0x4b, 0xb0);
+            button.LineColor = primary ? Color.FromArgb(0x5d, 0x4b, 0xb0) : ArcadeColors.Ink;
+            button.ForeColor = TextColor;
             button.SetBounds(x, y, 92, 38);
             Controls.Add(button);
             return button;
@@ -114,7 +116,7 @@ namespace GyeolheePinball
             base.OnHandleCreated(e);
             try
             {
-                int preference = 2;
+                int preference = 1; // 모서리를 둥글리지 않는다.
                 _nativeFrame = DwmSetWindowAttribute(Handle, 33, ref preference, sizeof(int)) == 0;
                 int color = ColorTranslator.ToWin32(BorderColor);
                 DwmSetWindowAttribute(Handle, 34, ref color, sizeof(int));
@@ -126,13 +128,14 @@ namespace GyeolheePinball
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            // Older Windows keeps a clean rectangular frame instead of a jagged binary region.
-            if (!_nativeFrame)
+            // 창 안쪽에 굵은 테두리를 두른다(메인 화면 상자의 도트 테두리와 같은 굵기).
+            int thickness = Math.Max(1, (int)Math.Round(3f * DeviceDpi / 96f));
+            using (var brush = new SolidBrush(BorderColor))
             {
-                using (var pen = new Pen(BorderColor))
-                {
-                    e.Graphics.DrawRectangle(pen, 0, 0, ClientSize.Width - 1, ClientSize.Height - 1);
-                }
+                e.Graphics.FillRectangle(brush, 0, 0, ClientSize.Width, thickness);
+                e.Graphics.FillRectangle(brush, 0, ClientSize.Height - thickness, ClientSize.Width, thickness);
+                e.Graphics.FillRectangle(brush, 0, 0, thickness, ClientSize.Height);
+                e.Graphics.FillRectangle(brush, ClientSize.Width - thickness, 0, thickness, ClientSize.Height);
             }
         }
 
@@ -150,13 +153,14 @@ namespace GyeolheePinball
         {
             var title = AddText("title", "새 버전을 사용할 수 있습니다", 13.0f, FontStyle.Bold, TextColor, 18, 20, 348, 30);
             title.MouseDown += DragWindow;
-            AddText("version", "버전 " + version, 9.5f, FontStyle.Bold, AccentColor, 18, 56, 384, 22);
-            var notesBox = new RoundedPanel();
+            title.Font = ArcadeFonts.Get(ArcadeFonts.Pixel, 24f * DeviceDpi / 96f, true);
+            title.ForeColor = AccentColor;
+            AddText("version", "버전 " + version, 9.5f, FontStyle.Bold, ArcadeColors.Cyan, 18, 56, 384, 22);
+            var notesBox = new UpdateNotesPanel();
             notesBox.Name = "notesBox";
             notesBox.AccessibleName = "업데이트 내용";
-            notesBox.Radius = 8;
-            notesBox.FillColor = Color.White;
-            notesBox.BorderColor = BorderColor;
+            notesBox.FillColor = ArcadeColors.Background;
+            notesBox.BorderColor = ArcadeColors.Line;
             notesBox.SetBounds(18, 86, 384, 0);
             Controls.Add(notesBox);
 
@@ -189,8 +193,78 @@ namespace GyeolheePinball
     {
         protected override void OnPaint(PaintEventArgs e)
         {
+            if (ArcadeFonts.IsOutlineFont(Font))
+            {
+                // 도트 글꼴은 메인 화면과 같은 방식으로 그린다.
+                using (var brush = new SolidBrush(ForeColor))
+                {
+                    ArcadeSurface.DrawSmoothText(e.Graphics, Text, Font, brush, ClientRectangle, 0);
+                }
+                return;
+            }
+
             TextRenderer.DrawText(e.Graphics, Text, Font, ClientRectangle, ForeColor,
                 TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.WordBreak);
+        }
+    }
+
+    // 업데이트 내용을 담는 각진 상자.
+    internal sealed class UpdateNotesPanel : Panel
+    {
+        public Color FillColor { get; set; }
+        public Color BorderColor { get; set; }
+
+        public UpdateNotesPanel()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            int thickness = Math.Max(1, (int)Math.Round(2f * e.Graphics.DpiX / 96f));
+            using (var border = new SolidBrush(BorderColor))
+            using (var fill = new SolidBrush(FillColor))
+            {
+                e.Graphics.FillRectangle(border, ClientRectangle);
+                e.Graphics.FillRectangle(fill, Rectangle.Inflate(ClientRectangle, -thickness, -thickness));
+            }
+        }
+    }
+
+    // 내려받기 진행 막대.
+    internal sealed class UpdateProgressBar : Control
+    {
+        private int _value;
+
+        public UpdateProgressBar()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+        }
+
+        public int Value
+        {
+            get { return _value; }
+            set
+            {
+                _value = Math.Max(0, Math.Min(100, value));
+                Invalidate();
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            int thickness = Math.Max(1, (int)Math.Round(2f * e.Graphics.DpiX / 96f));
+            Rectangle inner = Rectangle.Inflate(ClientRectangle, -thickness, -thickness);
+            using (var border = new SolidBrush(ArcadeColors.Line))
+            using (var track = new SolidBrush(ArcadeColors.Background))
+            using (var bar = new SolidBrush(ArcadeColors.Accent))
+            {
+                e.Graphics.FillRectangle(border, ClientRectangle);
+                e.Graphics.FillRectangle(track, inner);
+                e.Graphics.FillRectangle(bar, inner.X, inner.Y, inner.Width * _value / 100, inner.Height);
+            }
         }
     }
 
@@ -220,39 +294,34 @@ namespace GyeolheePinball
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            e.Graphics.Clear(Parent == null ? BackColor : Parent.BackColor);
+            Color canvas = Parent == null ? BackColor : Parent.BackColor;
+            e.Graphics.Clear(canvas);
             if (Width < 3 || Height < 3) return;
-            const int renderScale = 4;
-            // Supersample only the outline; draw text at native resolution for crisp glyphs.
-            using (var bitmap = new Bitmap(Width * renderScale, Height * renderScale))
-            using (Graphics graphics = Graphics.FromImage(bitmap))
+            // 각진 단추: 면 아래로 그림자가 떨어지고, 올리면 밝아지고 누르면 살짝 내려간다.
+            int shadow = Math.Max(1, (int)Math.Round(4f * e.Graphics.DpiX / 96f));
+            int offset = _pressed ? Math.Max(1, shadow / 2) : 0;
+            var face = new Rectangle(0, offset, Width, Height - shadow);
+            using (var shadowBrush = new SolidBrush(LineColor))
+            using (var faceBrush = new SolidBrush(_hover ? ArcadeColors.Brighten(FillColor, 1.12f) : FillColor))
             {
-                graphics.Clear(Parent == null ? BackColor : Parent.BackColor);
-                graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                graphics.ScaleTransform(renderScale, renderScale);
-                int radius = Math.Max(1, (int)Math.Round(12 * e.Graphics.DpiX / 96));
-                var rect = new Rectangle(1, 1, Width - 3, Height - 3);
-                using (GraphicsPath path = Shape.Rounded(rect, radius))
-                using (var fill = new SolidBrush(FillColor))
-                using (var border = new Pen(LineColor))
-                {
-                    graphics.FillPath(fill, path);
-                    if (_hover || _pressed)
-                    {
-                        using (var overlay = new SolidBrush(Color.FromArgb(_pressed ? 22 : 10, Color.Black)))
-                            graphics.FillPath(overlay, path);
-                    }
-                    graphics.DrawPath(border, path);
-                }
-                e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                e.Graphics.DrawImage(bitmap, ClientRectangle, 0, 0, bitmap.Width, bitmap.Height, GraphicsUnit.Pixel);
+                e.Graphics.FillRectangle(shadowBrush, 0, offset + shadow, Width, Height - shadow - offset);
+                e.Graphics.FillRectangle(faceBrush, face);
             }
-            TextRenderer.DrawText(e.Graphics, Text, Font, ClientRectangle, ForeColor,
-                TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine |
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            if (ArcadeFonts.IsOutlineFont(Font))
+            {
+                using (var brush = new SolidBrush(ForeColor))
+                {
+                    ArcadeSurface.DrawSmoothText(e.Graphics, Text, Font, brush, face, 1);
+                }
+            }
+            else
+            {
+                TextRenderer.DrawText(e.Graphics, Text, Font, face, ForeColor,
+                    TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine |
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            }
             if (Focused && ShowFocusCues)
-                ControlPaint.DrawFocusRectangle(e.Graphics, new Rectangle(5, 5, Width - 10, Height - 10), ForeColor, FillColor);
+                ControlPaint.DrawFocusRectangle(e.Graphics, Rectangle.Inflate(face, -4, -4), ForeColor, FillColor);
         }
     }
 }

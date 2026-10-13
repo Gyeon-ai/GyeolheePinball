@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.props" Condition="Exists('$(MSBuildToolsPath)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -41,6 +41,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="ArcadeMainForm.cs" />
+    <Compile Include="ArcadeUi.cs" />
     <Compile Include="SelfUpdater.cs" />
     <Compile Include="UpdateDialogs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -56,6 +58,27 @@
     <EmbeddedResource Include="app.ico">
       <LogicalName>GyeolheePinballIcon</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="..\GyeolheePinball\arcade-icon.png">
+      <Link>arcade-icon.png</Link>
+      <LogicalName>GyeolheePinballArcadeIcon</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\GyeolheePinball\fonts\Galmuri11.ttf" Condition="Exists('..\GyeolheePinball\fonts\Galmuri11.ttf')">
+      <Link>fonts\Galmuri11.ttf</Link>
+      <LogicalName>ArcadeFontGalmuri11</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\GyeolheePinball\fonts\Galmuri11-Bold.ttf" Condition="Exists('..\GyeolheePinball\fonts\Galmuri11-Bold.ttf')">
+      <Link>fonts\Galmuri11-Bold.ttf</Link>
+      <LogicalName>ArcadeFontGalmuri11Bold</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\GyeolheePinball\fonts\PressStart2P-Regular.ttf" Condition="Exists('..\GyeolheePinball\fonts\PressStart2P-Regular.ttf')">
+      <Link>fonts\PressStart2P-Regular.ttf</Link>
+      <LogicalName>ArcadeFontPressStart2P</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\GyeolheePinball\fonts\DoHyeon-Regular.ttf" Condition="Exists('..\GyeolheePinball\fonts\DoHyeon-Regular.ttf')">
+      <Link>fonts\DoHyeon-Regular.ttf</Link>
+      <LogicalName>ArcadeFontDoHyeon</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
+
