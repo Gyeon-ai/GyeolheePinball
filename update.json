@@ -1,16 +1,16 @@
 {
     "SchemaVersion":  2,
     "ProductId":  "Gyeon-ai/GyeolheePinball",
-    "Version":  "1.0.0.7",
-    "ReleaseNotes":  "화면을 새 디자인으로 바꿨습니다. 대결미션 수집, 보너스 +1 선택, 수집 대기 목록, 직접 추가, 메모장을 추가했고 설정과 수집 목록이 자동으로 저장됩니다. 새로 수집된 내용은 목록 맨 위에 추가됩니다.",
+    "Version":  "1.0.0.8",
+    "ReleaseNotes":  "보안과 안정성을 개선했습니다. 화면과 수집·코인 규칙은 그대로입니다.",
     "Standard":  {
                      "Url":  "https://github.com/Gyeon-ai/GyeolheePinball/raw/refs/heads/main/%EA%B2%B0%ED%9D%AC%20%EC%A2%85%EA%B2%9C%ED%95%80%EB%B3%BC.exe",
-                     "Sha256":  "A751460BC1955E65C8303887510034EEC5CBFEA0F91F27E4D9C6CD4B57817D0F",
+                     "Sha256":  "B28D36BED8C7B3845CDDDFC4E25468C16EB2C019D5135FA7697A3BB66FCAA3F6",
                      "Size":  12056576
                  },
     "Auto":  {
                  "Url":  "https://github.com/Gyeon-ai/GyeolheePinball/raw/refs/heads/main/%EA%B2%B0%ED%9D%AC%20%EC%A2%85%EA%B2%9C%ED%95%80%EB%B3%BC%28%EC%9E%90%EB%8F%99%29.exe",
-                 "Sha256":  "96F88C4619F88ABD63FA1178629E9C75CC695A66F34BF116101A2C9E34337580",
+                 "Sha256":  "7B4E52B5D746D842C4A0791452102C8D69D9625AF8152D4154FDFCA15E8EC790",
                  "Size":  12073472
              }
 }
